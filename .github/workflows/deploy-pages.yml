@@ -23,8 +23,6 @@ concurrency:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
@@ -79,19 +77,32 @@ jobs:
           echo "Built ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}" > build/WebGL/deploy-info.txt
           echo "Deploy label: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_label || github.ref_name }}" >> build/WebGL/deploy-info.txt
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: webgl-build
           path: build/WebGL
+          retention-days: 3
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: write
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: webgl-build
+          path: build/WebGL
+
+      # Pushes to gh-pages branch — works with deploy-* tags (no github-pages environment rules).
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/WebGL
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "Deploy ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_label || github.ref_name }}"

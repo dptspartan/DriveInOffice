@@ -7,7 +7,12 @@ This repo builds **Unity WebGL** (`City-Drive` scene) and publishes to GitHub Pa
 ### 1. Enable Pages
 
 1. Repo **Settings → Pages**
-2. **Build and deployment → Source**: **GitHub Actions**
+2. **Build and deployment → Source**: **Deploy from a branch**
+3. **Branch**: `gh-pages` / **/ (root)** → Save
+
+The workflow pushes the WebGL build to the `gh-pages` branch on each deploy.
+
+**Alternative (if you prefer GitHub Actions as source):** use **GitHub Actions** as source, then go to **Settings → Environments → github-pages → Deployment branches and tags** and add tag pattern `deploy-*`. The default workflow uses the `gh-pages` branch method so tag deploys work without environment rules.
 
 ### 2. Unity license secrets (required for CI)
 
@@ -66,5 +71,6 @@ Examples: `deploy-1.0`, `deploy-1.1`, `deploy-beta`
 |-------|-----|
 | License activation failed | Re-create `UNITY_LICENSE` secret; check email/password |
 | Build runs out of disk | Workflow already frees disk space; retry |
-| Blank page / WASM errors | Ensure Pages source is **GitHub Actions**; `.nojekyll` is added automatically |
+| Blank page / WASM errors | Pages source = **gh-pages** branch, root; `.nojekyll` is added automatically |
+| Tag not allowed to deploy (environment rules) | Use **gh-pages** branch as Pages source (see above), or allow tag `deploy-*` on the `github-pages` environment |
 | Wrong scene | CI builds only `Assets/Scenes/City-Drive.unity` via `WebGLBuild.cs` |
