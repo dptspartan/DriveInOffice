@@ -999,6 +999,7 @@ GameObject:
   - component: {fileID: 2717816165645735416}
   - component: {fileID: 3421957991869319486}
   - component: {fileID: 6087735622957296425}
+  - component: {fileID: 9182736450192837465}
   - component: {fileID: 4216082211626582520}
   - component: {fileID: 5123988477162539012}
   m_Layer: 0
@@ -1076,31 +1077,77 @@ MonoBehaviour:
   frontRightMesh: {fileID: 6422191375491789891}
   rearLeftMesh: {fileID: 7065497107956249467}
   rearRightMesh: {fileID: 7197186937930028889}
-  motorForce: 1550
-  maxSpeed: 18
-  torqueCurve:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  footBrakeForce: 2800
-  handbrakeForce: 3500
-  engineBrakeForce: 1400
-  maxSteerAngle: 17
-  minSteerAngle: 8
-  steerSpeed: 2.4
-  steerFalloff: 1.25
-  highSpeedSteerRate: 0.38
-  frontSidewaysStiffness: 2.4
-  rearSidewaysStiffness: 2.35
-  handbrakeRearStiffness: 0.65
-  downforce: 16
-  stabilityYaw: 2100
-  handbrakeYaw: 320
-  maxSpinRate: 1.8
-  impactStopSeconds: 1.35
-  impactBrakeForce: 8000
+  physics:
+    motorPower: 1400
+    maxSpeed: 18
+    reversePower: 0.45
+    brakeForce: 2600
+    handbrakeForce: 3400
+    coastBrake: 900
+    maxSteerAngle: 18
+    minSteerAngle: 8
+    steerRampIn: 1.8
+    steerRampOut: 2.6
+    steerHighSpeedRate: 0.42
+    steerSpeedFalloff: 1.35
+    keyboardSteerScale: 0.82
+    frontGrip: 1
+    rearGrip: 0.95
+    handbrakeRearGrip: 0.4
+    mass: 1200
+    centerOfMass: {x: 0, y: 0.15, z: 0.04}
+    downforce: 14
+    handbrakeYaw: 260
+    driftAlignStrength: 18
+    maxYawRate: 2.2
+    driftAngleThreshold: 10
+    skidSlipReference: 0.55
+    impactStopSeconds: 1.2
+    impactBrakeForce: 7500
+  assistGripMultiplier: 1
+  assistSteerMultiplier: 1
+--- !u!114 &9182736450192837465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7898636607039392121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3d7b1a08c2f4e6d9b8a7c6d5e4f3a2b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tier: 1
+  applyOnAwake: 1
+  customOverride:
+    motorPower: 0
+    maxSpeed: 0
+    reversePower: 0
+    brakeForce: 0
+    handbrakeForce: 0
+    coastBrake: 0
+    maxSteerAngle: 0
+    minSteerAngle: 0
+    steerRampIn: 0
+    steerRampOut: 0
+    steerHighSpeedRate: 0
+    steerSpeedFalloff: 0
+    keyboardSteerScale: 0
+    frontGrip: 0
+    rearGrip: 0
+    handbrakeRearGrip: 0
+    mass: 0
+    centerOfMass: {x: 0, y: 0, z: 0}
+    downforce: 0
+    handbrakeYaw: 0
+    driftAlignStrength: 0
+    maxYawRate: 0
+    driftAngleThreshold: 0
+    skidSlipReference: 0
+    impactStopSeconds: 0
+    impactBrakeForce: 0
+  useCustomOverride: 0
 --- !u!114 &4216082211626582520
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1108,13 +1155,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7898636607039392121}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8d5f0a2b3c945e7f0a1b2c3d4e5f6071, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   car: {fileID: 6087735622957296425}
-  slipThreshold: 0.55
+  slipThreshold: 0.3
   minSpeed: 3.5
   markWidth: 0.2
   markLifetime: 28
