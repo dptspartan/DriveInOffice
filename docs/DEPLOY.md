@@ -1,6 +1,9 @@
 # Deploying City-Drive to GitHub Pages
 
-This repo builds **Unity WebGL** (`City-Drive` scene) and publishes to GitHub Pages.
+Unity WebGL build settings in this repo (for GitHub Pages):
+
+- **Compression:** Gzip + decompression fallback (not Brotli)
+- **Template:** `Assets/WebGLTemplates/Fullscreen` (canvas fills the page)
 
 ## One-time GitHub setup
 
@@ -12,7 +15,7 @@ This repo builds **Unity WebGL** (`City-Drive` scene) and publishes to GitHub Pa
 
 The workflow pushes the WebGL build to the `gh-pages` branch on each deploy.
 
-**Alternative (if you prefer GitHub Actions as source):** use **GitHub Actions** as source, then go to **Settings → Environments → github-pages → Deployment branches and tags** and add tag pattern `deploy-*`. The default workflow uses the `gh-pages` branch method so tag deploys work without environment rules.
+If `gh-pages` does not appear yet, run one successful deploy first (step below), then set Pages source.
 
 ### 2. Unity license secrets (required for CI)
 
@@ -31,46 +34,44 @@ For **Unity Pro**, you can use `UNITY_SERIAL` instead of the personal flow (see 
 
 ## Deploy with a tag (recommended)
 
-Tag the commit you want on any branch, then push the tag:
-
 ```bash
-git checkout some-more-work   # or main
+git checkout your-branch
 git pull
-git tag deploy-1.1
-git push origin deploy-1.1
+git add -A && git commit -m "your message"   # include WebGL fixes
+git push origin your-branch
+git tag deploy-1.3
+git push origin deploy-1.3
 ```
 
-Any tag matching `deploy-*` triggers the workflow and deploys **that commit** to Pages.
-
-Examples: `deploy-1.0`, `deploy-1.1`, `deploy-beta`
+Any tag matching `deploy-*` triggers a full WebGL build (~15–25 min) and deploy to `gh-pages`.
 
 ## Deploy a branch without a tag
 
 1. GitHub → **Actions** → **Deploy WebGL to GitHub Pages**
 2. **Run workflow**
-3. Choose **branch** (e.g. `main`, `some-more-work`)
-4. Optional **deploy label** (e.g. `deploy-1.1`)
-5. Run
+3. Choose **branch**
+4. Run
 
 ## After deploy
 
-- Site URL: `https://dptspartan.github.io/DriveInOffice/` (if repo is public and default Pages URL)
-- Check **Actions** tab for build logs (first WebGL build can take 30–60+ minutes).
-- Build info is written to `deploy-info.txt` in the published site root.
-
-## Local WebGL build (optional)
-
-```bash
-# Unity Editor: File → Build Settings → WebGL → Build
-# Or use the same method as CI via batchmode once WebGLBuild.cs is in the project.
-```
+- Site: `https://dptspartan.github.io/DriveInOffice/`
+- Game fills the browser window; click overlay (or wait briefly) for browser fullscreen if allowed.
 
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
-| License activation failed | Re-create `UNITY_LICENSE` secret; check email/password |
-| Build runs out of disk | Workflow already frees disk space; retry |
-| Blank page / WASM errors | Pages source = **gh-pages** branch, root; `.nojekyll` is added automatically |
-| Tag not allowed to deploy (environment rules) | Use **gh-pages** branch as Pages source (see above), or allow tag `deploy-*` on the `github-pages` environment |
-| Wrong scene | CI builds only `Assets/Scenes/City-Drive.unity` via `WebGLBuild.cs` |
+| `.br` / brotli errors | Rebuild after pulling — project uses **Gzip** now |
+| `content-encoding: gzip` but still broken | Enable **Decompression Fallback** (already in project); redeploy |
+| License activation failed | Re-create `UNITY_LICENSE` secret |
+| `gh-pages` branch missing | Complete one deploy; then set Pages source |
+| Blank page | Pages → **gh-pages** branch, **/ (root)**; check Console for errors |
+| Fullscreen blocked | Normal on some browsers — click the page once; canvas still fills the tab |
+
+## Verify in Unity (optional)
+
+**Edit → Project Settings → Player → WebGL → Publishing Settings**
+
+- Compression Format: **Gzip**
+- Decompression Fallback: **enabled**
+- WebGL Template: **Fullscreen**
