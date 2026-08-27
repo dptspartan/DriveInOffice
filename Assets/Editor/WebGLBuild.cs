@@ -18,7 +18,7 @@ public static class WebGLBuild
             BuildTarget.WebGL,
             BuildOptions.None);
 
-        if (report.summary.result != BuildResult.Success)
+        if (report.summary.result != BuildResult.Succeeded)
             throw new Exception($"WebGL build failed: {report.summary.result} ({report.summary.totalErrors} errors)");
     }
 }

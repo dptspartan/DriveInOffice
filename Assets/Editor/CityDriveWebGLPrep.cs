@@ -40,7 +40,7 @@ public static class CityDriveWebGLPrep
         GameObject car = GameObject.Find("DrivableCar");
         Vector3 center = car != null ? car.transform.position : new Vector3(-140f, 2f, -150f);
 
-        var existing = Object.FindFirstObjectByType<LightProbeGroup>();
+        var existing = Object.FindAnyObjectByType<LightProbeGroup>();
         if (existing != null)
         {
             Debug.LogWarning("Light Probe Group already exists: " + existing.name);
