@@ -1,0 +1,95 @@
+name: Deploy WebGL to GitHub Pages
+
+on:
+  push:
+    tags:
+      - deploy-*
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build and deploy
+        required: true
+        type: string
+        default: main
+      deploy_label:
+        description: Optional label shown in workflow (e.g. deploy-1.1)
+        required: false
+        type: string
+        default: manual
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build WebGL
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
+          fetch-depth: 0
+          lfs: true
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-
+
+      - name: Build WebGL
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          unityVersion: auto
+          targetPlatform: WebGL
+          buildMethod: WebGLBuild.PerformBuild
+          customParameters: -nographics -batchmode -quit
+
+      - name: Prepare GitHub Pages output
+        run: |
+          touch build/WebGL/.nojekyll
+          echo "Built ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}" > build/WebGL/deploy-info.txt
+          echo "Deploy label: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_label || github.ref_name }}" >> build/WebGL/deploy-info.txt
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/WebGL
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
