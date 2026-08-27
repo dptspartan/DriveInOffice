@@ -1180,9 +1180,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   car: {fileID: 6087735622957296425}
-  minImpactSpeed: 5.5
+  minImpactSpeed: 8.5
+  fullStunSpeed: 13
+  minHeadOnSpeed: 5.5
+  grazeTangentRatio: 1.75
   maxGroundNormalY: 0.62
-  cooldown: 0.45
+  cooldown: 0.55
+  lightBumpCooldown: 0.15
 --- !u!1 &8580592668830032799
 GameObject:
   m_ObjectHideFlags: 0

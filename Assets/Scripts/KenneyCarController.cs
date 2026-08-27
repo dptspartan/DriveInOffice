@@ -30,6 +30,10 @@ public class KenneyCarController : MonoBehaviour
     [Range(0.5f, 1.5f)]
     public float assistSteerMultiplier = 1f;
 
+    [Header("Input")]
+    public CarPlayerInput playerInput;
+    public bool useExternalInput;
+
     public float Speed { get; private set; }
     public float ForwardSpeed { get; private set; }
     public float DriftAngle { get; private set; }
@@ -187,7 +191,7 @@ public class KenneyCarController : MonoBehaviour
         steerInput = Mathf.MoveTowards(steerInput, targetSteer, step);
     }
 
-    public void StunFromImpact(float duration = -1f)
+    public void StunFromImpact(float duration = -1f, float velocityRetention = 0.35f, float brakeScale = 1f)
     {
         float seconds = duration > 0f ? duration : physics.impactStopSeconds;
         stunUntil = Mathf.Max(stunUntil, Time.time + seconds);
@@ -199,8 +203,20 @@ public class KenneyCarController : MonoBehaviour
             return;
 
         Vector3 v = rb.linearVelocity;
-        rb.linearVelocity = new Vector3(v.x * 0.35f, v.y, v.z * 0.35f);
-        rb.angularVelocity *= 0.4f;
+        rb.linearVelocity = new Vector3(v.x * velocityRetention, v.y, v.z * velocityRetention);
+        rb.angularVelocity *= Mathf.Lerp(0.75f, 0.4f, brakeScale);
+    }
+
+    public void ApplyLightBump(float velocityRetention = 0.88f)
+    {
+        if (rb == null)
+            rb = GetComponent<Rigidbody>();
+        if (rb == null)
+            return;
+
+        Vector3 v = rb.linearVelocity;
+        rb.linearVelocity = new Vector3(v.x * velocityRetention, v.y, v.z * velocityRetention);
+        rb.angularVelocity *= 0.92f;
     }
 
     private void ApplyRigidbodySettings()
@@ -291,6 +307,20 @@ public class KenneyCarController : MonoBehaviour
     }
 
     private void ReadInput()
+    {
+        if (useExternalInput && playerInput != null)
+        {
+            playerInput.Read(out moveInput, out steerInputRaw, out handbrake, out analogSteerInput);
+            moveInput = Mathf.Clamp(moveInput, -1f, 1f);
+            steerInputRaw = Mathf.Clamp(steerInputRaw, -1f, 1f);
+            Throttle = moveInput;
+            return;
+        }
+
+        ReadDefaultInput();
+    }
+
+    private void ReadDefaultInput()
     {
         moveInput = 0f;
         steerInputRaw = 0f;

@@ -16,26 +16,56 @@ public class CarFollowCamera : MonoBehaviour
     public float speedPullBack = 0.65f;
 
     private Camera cam;
+    private AudioListener audioListener;
     private Vector3 followVelocity;
+    private Rect viewportRect = new Rect(0f, 0f, 1f, 1f);
 
     private void Awake()
     {
         cam = GetComponent<Camera>();
+        audioListener = GetComponent<AudioListener>();
         transform.localScale = Vector3.one;
+        ApplyViewportRect();
 
         if (target == null)
         {
             KenneyCarController found = FindAnyObjectByType<KenneyCarController>();
             if (found != null)
-            {
-                car = found;
-                target = found.transform;
-            }
+                Bind(found.transform, found);
         }
         else if (car == null)
         {
             car = target.GetComponent<KenneyCarController>();
         }
+    }
+
+    public void Bind(Transform followTarget, KenneyCarController controller)
+    {
+        target = followTarget;
+        car = controller;
+    }
+
+    public void SetViewportRect(Rect rect)
+    {
+        viewportRect = rect;
+        ApplyViewportRect();
+    }
+
+    public void SetPrimaryAudioListener(bool enabled)
+    {
+        if (audioListener != null)
+            audioListener.enabled = enabled;
+    }
+
+    public void SetMainCameraTag(bool isMain)
+    {
+        gameObject.tag = isMain ? "MainCamera" : "Untagged";
+    }
+
+    private void ApplyViewportRect()
+    {
+        if (cam != null)
+            cam.rect = viewportRect;
     }
 
     private void LateUpdate()
