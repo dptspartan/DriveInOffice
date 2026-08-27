@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 
@@ -20,5 +21,8 @@ public static class WebGLBuild
 
         if (report.summary.result != BuildResult.Succeeded)
             throw new Exception($"WebGL build failed: {report.summary.result} ({report.summary.totalErrors} errors)");
+
+        // GitHub Pages: skip Jekyll so .wasm / .data are served correctly.
+        File.WriteAllText(Path.Combine(OutputPath, ".nojekyll"), string.Empty);
     }
 }

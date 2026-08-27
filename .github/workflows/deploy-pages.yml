@@ -73,7 +73,9 @@ jobs:
 
       - name: Prepare GitHub Pages output
         run: |
-          touch build/WebGL/.nojekyll
+          # game-ci runs Unity in Docker as root — reclaim ownership for this step.
+          sudo chown -R "$(id -u):$(id -g)" build/
+          if [ ! -f build/WebGL/.nojekyll ]; then touch build/WebGL/.nojekyll; fi
           echo "Built ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}" > build/WebGL/deploy-info.txt
           echo "Deploy label: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_label || github.ref_name }}" >> build/WebGL/deploy-info.txt
 
