@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/City-Drive.unity
+    guid: 4a0bf98151b7a7237b524b69e166824f
+  - enabled: 1
     path: Assets/Scenes/CityShowcase.unity
     guid: 8f3a1c9e2b7d4a56b0c8d4e1f6a09273
   - enabled: 1
