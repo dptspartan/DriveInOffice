@@ -8,12 +8,13 @@ public class MapRuntimeQuality : MonoBehaviour
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
         QualitySettings.shadows = ShadowQuality.HardOnly;
-        QualitySettings.shadowDistance = 90f;
+        QualitySettings.shadowDistance = 55f;
         QualitySettings.shadowResolution = ShadowResolution.Low;
-        QualitySettings.lodBias = 1f;
+        QualitySettings.lodBias = 0.7f;
         QualitySettings.particleRaycastBudget = 0;
         QualitySettings.realtimeReflectionProbes = false;
         QualitySettings.anisotropicFiltering = AnisotropicFiltering.Disable;
-        RenderSettings.fog = false;
+        QualitySettings.antiAliasing = 0;
+        // Leave fog alone — night scenes set it from CityDriveBootstrap.
     }
 }

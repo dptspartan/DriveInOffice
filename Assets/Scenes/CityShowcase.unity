@@ -339,56 +339,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a8f2c1d9e0b47c3a6d5e4f102938475, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  roadStraight: {fileID: 2050053182646701128, guid: dbb9136f40f9d363288105df8bdc3984, type: 3}
-  roadStraightBarrier: {fileID: 385188085795737372, guid: 6d6d008d5393dcf92ae7f7489fbc186a, type: 3}
-  roadCrossing: {fileID: 4931392179628312664, guid: cee8dd3977f52fc47b5011ab80d2ee84, type: 3}
-  roadCrossroad: {fileID: 3869253378650976827, guid: 945400629939840f884867768cdb95d5, type: 3}
-  roadCrossroadLine: {fileID: 6571810490941497906, guid: ab6ed9c5c4e819c2985d74486cf92222, type: 3}
-  roadCrossroadPath: {fileID: 5171972352861210387, guid: b474f2de45a6e7ec2a87df9895023ec5, type: 3}
-  roadTee: {fileID: 779091817615010547, guid: 51bbffc98fb11979b8fc9ac8c2bc85ed, type: 3}
-  roadTeeBarrier: {fileID: 2855452875716940450, guid: dc5a6cea4250de61caec3a6256bb6105, type: 3}
-  roadBendBarrier: {fileID: 1116748464955342558, guid: 1d0ec9a4dff8074978e499e9eb4f202a, type: 3}
-  roadDriveway: {fileID: 5590826420501116747, guid: 9fdb49919bb1ad579bb9319d67b4fcf1, type: 3}
-  tileLow: {fileID: 5221619973140378362, guid: 8358d50d1805a74bd9355a18b3648873, type: 3}
-  buildings:
-  - {fileID: 4508651562860150202, guid: 6d3bd000f9d3e3c479ee0339e54f1247, type: 3}
-  - {fileID: 8171410634475633590, guid: 0cd0e09ea28be304eae00f533b94ffd9, type: 3}
-  - {fileID: 4724550707367194761, guid: 54bb0c6cea2adb2408f37dd1ba7a7dd7, type: 3}
-  - {fileID: 5781593798904203336, guid: 5317394648af5b94eaea206e07e79629, type: 3}
-  - {fileID: 4597635526157119969, guid: 91a027cf7bf8fb84a8c5750b8c290efe, type: 3}
-  - {fileID: 8038722823023559478, guid: ade3f441d04146e41b543404123042e3, type: 3}
-  - {fileID: 3835268542668041557, guid: a1eaf708c08375d4a9b5f90640c24bc0, type: 3}
-  sidewalks:
-  - {fileID: 994477329328447841, guid: c872a4807289d164fafc5806b57b2b4d, type: 3}
-  - {fileID: 3162106053455735579, guid: 4cd46b062033fff4391fcbb6bd8a242f, type: 3}
-  - {fileID: 2360205435969986073, guid: dc010488c79022e489f975537f336766, type: 3}
-  - {fileID: 2299338370032118636, guid: 1fc6c0201fd222f49a93e754fcfb3208, type: 3}
-  - {fileID: 279754824555643807, guid: 7ad27798a56af29409bfd87e866e6458, type: 3}
-  - {fileID: 5221619973140378362, guid: 8358d50d1805a74bd9355a18b3648873, type: 3}
-  parkedCars:
-  - {fileID: 52932905164622209, guid: 640b94cf88de4ef459ce14645b2736d9, type: 3}
-  - {fileID: 400323601965181187, guid: fc1e359a90d4e6542b4d8022c50429ce, type: 3}
-  - {fileID: 6797269430195769530, guid: 0f2505a3f5e77fa44a6703470cc30543, type: 3}
-  - {fileID: 5272454072200437660, guid: 4be47a48b47d6224ebb6430561872389, type: 3}
-  - {fileID: 787257008305991662, guid: 6fda6d14dbbf5c54fb01d830757a8d1f, type: 3}
-  - {fileID: 1049787233113196042, guid: ff60e6cbfd0ed6e4bace0ea2a2f5a238, type: 3}
-  fountain: {fileID: 3226462819479356637, guid: d2d360664b1d55c4584ee3bc8ec31be8, type: 3}
-  palm: {fileID: 8483353424882059376, guid: d77f3988a559cee4f85af6b47c0539a7, type: 3}
-  bushes:
-  - {fileID: 7665143291057209745, guid: c5d47d656169f264a8c470c164175281, type: 3}
-  - {fileID: 6660723129872871700, guid: 98b984cd8eaf1ef4d8625a892ba0830b, type: 3}
-  - {fileID: 5427886293747706320, guid: 211ee66cf2cc2f444b0ad19bae4e999a, type: 3}
-  props:
-  - {fileID: 1017580477183453536, guid: 4c05ec89804d8a347a8f81980a9969f9, type: 3}
-  - {fileID: 7117986224548164637, guid: dd36400a9b587374c8784011cfc70a09, type: 3}
-  - {fileID: 3646922649956121724, guid: 214952dcbf34cc642ae2e0301f4d2baf, type: 3}
-  - {fileID: 3351462997267180038, guid: ccab6c8306a6dae4d9688eb372e59639, type: 3}
-  - {fileID: 2351082282608329307, guid: de8a7ea89e20ea3d6b5357c500f8b309, type: 3}
-  - {fileID: 3193621326640634516, guid: eabcca7d0fadf077284af03bf79f63ad, type: 3}
-  - {fileID: 3936762733482998003, guid: 259f49cbcfd39ed4eb70f61fd89b598e, type: 3}
-  - {fileID: 890972779466978726, guid: 948f5617c7202046bbab846c4a59a004, type: 3}
-  drivableCar: {fileID: 1969823534052479062, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
-  carSpawn: {x: 40, y: 0.4, z: 20}
+  carSpawn: {x: 40, y: 1.58, z: 20}
   carEuler: {x: 0, y: 90, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
