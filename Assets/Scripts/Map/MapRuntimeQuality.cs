@@ -15,6 +15,5 @@ public class MapRuntimeQuality : MonoBehaviour
         QualitySettings.realtimeReflectionProbes = false;
         QualitySettings.anisotropicFiltering = AnisotropicFiltering.Disable;
         QualitySettings.antiAliasing = 0;
-        // Leave fog alone — night scenes set it from CityDriveBootstrap.
     }
 }
