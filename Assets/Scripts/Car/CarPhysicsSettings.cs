@@ -14,7 +14,7 @@ public class CarPhysicsSettings
 {
     [Header("Engine")]
     [Tooltip("Rear-wheel drive motor torque.")]
-    public float motorPower = 1400f;
+    public float motorPower = 1650f;
 
     [Tooltip("Soft top speed in m/s. 18 ≈ 65 km/h.")]
     public float maxSpeed = 18f;
@@ -35,22 +35,22 @@ public class CarPhysicsSettings
     public float minSteerAngle = 8f;
 
     [Tooltip("How fast wheels turn toward input. Lower = less twitchy.")]
-    public float steerRampIn = 1.8f;
+    public float steerRampIn = 2.8f;
 
     [Tooltip("How fast wheels return to center when input is released.")]
-    public float steerRampOut = 2.6f;
+    public float steerRampOut = 2.2f;
 
     [Tooltip("Steer ramp multiplier at top speed. Lower = slower turns when fast.")]
     [Range(0.2f, 1f)]
-    public float steerHighSpeedRate = 0.42f;
+    public float steerHighSpeedRate = 0.52f;
 
     [Tooltip("How early max steer angle drops off as speed rises. Higher = tighter at moderate speed.")]
     [Range(0.8f, 2.5f)]
-    public float steerSpeedFalloff = 1.35f;
+    public float steerSpeedFalloff = 1.25f;
 
     [Tooltip("Keyboard A/D is digital; this scales how much of full lock you get.")]
     [Range(0.5f, 1f)]
-    public float keyboardSteerScale = 0.82f;
+    public float keyboardSteerScale = 0.88f;
 
     [Header("Grip")]
     [Tooltip("Front tire grip multiplier. Higher = more understeer.")]
@@ -67,8 +67,10 @@ public class CarPhysicsSettings
 
     [Header("Body")]
     public float mass = 1200f;
-    public Vector3 centerOfMass = new Vector3(0f, 0.15f, 0.04f);
-    public float downforce = 14f;
+    public Vector3 centerOfMass = new Vector3(0f, 0.11f, 0.05f);
+    public float downforce = 16f;
+    public float rollStability = 2400f;
+    public float pitchStability = 1900f;
 
     [Header("Drift")]
     public float handbrakeYaw = 260f;
@@ -96,7 +98,7 @@ public class CarPhysicsSettings
             case CarTier.Starter:
                 return new CarPhysicsSettings
                 {
-                    motorPower = 1100f,
+                    motorPower = 1200f,
                     maxSpeed = 14f,
                     reversePower = 0.4f,
                     brakeForce = 2800f,
@@ -104,16 +106,19 @@ public class CarPhysicsSettings
                     coastBrake = 1100f,
                     maxSteerAngle = 20f,
                     minSteerAngle = 10f,
-                    steerRampIn = 1.6f,
-                    steerRampOut = 2.4f,
-                    steerHighSpeedRate = 0.48f,
-                    steerSpeedFalloff = 1.2f,
-                    keyboardSteerScale = 0.88f,
+                    steerRampIn = 2.6f,
+                    steerRampOut = 2.1f,
+                    steerHighSpeedRate = 0.55f,
+                    steerSpeedFalloff = 1.15f,
+                    keyboardSteerScale = 0.9f,
                     frontGrip = 1.12f,
                     rearGrip = 1.08f,
                     handbrakeRearGrip = 0.5f,
                     mass = 1150f,
-                    downforce = 16f,
+                    centerOfMass = new Vector3(0f, 0.11f, 0.05f),
+                    downforce = 18f,
+                    rollStability = 2600f,
+                    pitchStability = 2000f,
                     handbrakeYaw = 220f,
                     driftAlignStrength = 24f,
                     maxYawRate = 1.8f,
@@ -124,29 +129,32 @@ public class CarPhysicsSettings
             case CarTier.Sport:
                 return new CarPhysicsSettings
                 {
-                    motorPower = 1900f,
+                    motorPower = 2150f,
                     maxSpeed = 22f,
                     reversePower = 0.45f,
                     brakeForce = 2500f,
                     handbrakeForce = 3600f,
                     coastBrake = 750f,
-                    maxSteerAngle = 16f,
-                    minSteerAngle = 7f,
-                    steerRampIn = 2.2f,
-                    steerRampOut = 3f,
-                    steerHighSpeedRate = 0.38f,
-                    steerSpeedFalloff = 1.5f,
-                    keyboardSteerScale = 0.78f,
-                    frontGrip = 0.98f,
-                    rearGrip = 0.88f,
-                    handbrakeRearGrip = 0.32f,
+                    maxSteerAngle = 17f,
+                    minSteerAngle = 8f,
+                    steerRampIn = 3f,
+                    steerRampOut = 2.2f,
+                    steerHighSpeedRate = 0.5f,
+                    steerSpeedFalloff = 1.3f,
+                    keyboardSteerScale = 0.86f,
+                    frontGrip = 1.04f,
+                    rearGrip = 0.98f,
+                    handbrakeRearGrip = 0.34f,
                     mass = 1180f,
-                    downforce = 18f,
-                    handbrakeYaw = 320f,
-                    driftAlignStrength = 14f,
-                    maxYawRate = 2.6f,
-                    driftAngleThreshold = 8f,
-                    skidSlipReference = 0.5f
+                    centerOfMass = new Vector3(0f, 0.1f, 0.05f),
+                    downforce = 22f,
+                    rollStability = 2800f,
+                    pitchStability = 2200f,
+                    handbrakeYaw = 280f,
+                    driftAlignStrength = 22f,
+                    maxYawRate = 2.1f,
+                    driftAngleThreshold = 9f,
+                    skidSlipReference = 0.52f
                 };
 
             case CarTier.Super:
@@ -180,7 +188,7 @@ public class CarPhysicsSettings
             default:
                 return new CarPhysicsSettings
                 {
-                    motorPower = 1400f,
+                    motorPower = 1650f,
                     maxSpeed = 18f,
                     reversePower = 0.45f,
                     brakeForce = 2600f,
@@ -188,16 +196,19 @@ public class CarPhysicsSettings
                     coastBrake = 900f,
                     maxSteerAngle = 18f,
                     minSteerAngle = 8f,
-                    steerRampIn = 1.8f,
-                    steerRampOut = 2.6f,
-                    steerHighSpeedRate = 0.42f,
-                    steerSpeedFalloff = 1.35f,
-                    keyboardSteerScale = 0.82f,
+                    steerRampIn = 2.8f,
+                    steerRampOut = 2.2f,
+                    steerHighSpeedRate = 0.52f,
+                    steerSpeedFalloff = 1.25f,
+                    keyboardSteerScale = 0.88f,
                     frontGrip = 1f,
                     rearGrip = 0.95f,
                     handbrakeRearGrip = 0.4f,
                     mass = 1200f,
-                    downforce = 14f,
+                    centerOfMass = new Vector3(0f, 0.11f, 0.05f),
+                    downforce = 16f,
+                    rollStability = 2400f,
+                    pitchStability = 1900f,
                     handbrakeYaw = 260f,
                     driftAlignStrength = 18f,
                     maxYawRate = 2.2f,

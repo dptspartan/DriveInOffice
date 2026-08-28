@@ -61,6 +61,8 @@ public class CarPhysicsTier : MonoBehaviour
         if (source.handbrakeRearGrip > 0f) target.handbrakeRearGrip = source.handbrakeRearGrip;
         if (source.mass > 0f) target.mass = source.mass;
         if (source.downforce > 0f) target.downforce = source.downforce;
+        if (source.rollStability > 0f) target.rollStability = source.rollStability;
+        if (source.pitchStability > 0f) target.pitchStability = source.pitchStability;
         if (source.handbrakeYaw > 0f) target.handbrakeYaw = source.handbrakeYaw;
         if (source.driftAlignStrength > 0f) target.driftAlignStrength = source.driftAlignStrength;
         if (source.maxYawRate > 0f) target.maxYawRate = source.maxYawRate;

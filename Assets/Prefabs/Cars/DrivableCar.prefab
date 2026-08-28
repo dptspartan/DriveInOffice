@@ -1000,6 +1000,7 @@ GameObject:
   - component: {fileID: 3421957991869319486}
   - component: {fileID: 6087735622957296425}
   - component: {fileID: 9182736450192837465}
+  - component: {fileID: 6719283456789012345}
   - component: {fileID: 4216082211626582520}
   - component: {fileID: 5123988477162539012}
   m_Layer: 0
@@ -1078,7 +1079,7 @@ MonoBehaviour:
   rearLeftMesh: {fileID: 7065497107956249467}
   rearRightMesh: {fileID: 7197186937930028889}
   physics:
-    motorPower: 1400
+    motorPower: 1650
     maxSpeed: 18
     reversePower: 0.45
     brakeForce: 2600
@@ -1086,17 +1087,19 @@ MonoBehaviour:
     coastBrake: 900
     maxSteerAngle: 18
     minSteerAngle: 8
-    steerRampIn: 1.8
-    steerRampOut: 2.6
-    steerHighSpeedRate: 0.42
-    steerSpeedFalloff: 1.35
-    keyboardSteerScale: 0.82
+    steerRampIn: 2.8
+    steerRampOut: 2.2
+    steerHighSpeedRate: 0.52
+    steerSpeedFalloff: 1.25
+    keyboardSteerScale: 0.88
     frontGrip: 1
     rearGrip: 0.95
     handbrakeRearGrip: 0.4
     mass: 1200
-    centerOfMass: {x: 0, y: 0.15, z: 0.04}
-    downforce: 14
+    centerOfMass: {x: 0, y: 0.11, z: 0.05}
+    downforce: 16
+    rollStability: 2400
+    pitchStability: 1900
     handbrakeYaw: 260
     driftAlignStrength: 18
     maxYawRate: 2.2
@@ -1148,6 +1151,20 @@ MonoBehaviour:
     impactStopSeconds: 0
     impactBrakeForce: 0
   useCustomOverride: 0
+--- !u!114 &6719283456789012345
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7898636607039392121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2f4a6b8c0d1427395a8b7c6d5e4f3a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  assistEnabled: 1
+  assistStrength: 0.4
 --- !u!114 &4216082211626582520
 MonoBehaviour:
   m_ObjectHideFlags: 0

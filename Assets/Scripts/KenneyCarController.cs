@@ -22,17 +22,13 @@ public class KenneyCarController : MonoBehaviour
     public CarPhysicsSettings physics = new CarPhysicsSettings();
 
     [Header("Driving Assist Hooks")]
-    [Tooltip("Future CarDrivingAssist will scale grip through this multiplier.")]
+    [Tooltip("Scaled by CarKeyboardDrivingAssist when keyboard assist is enabled.")]
     [Range(0.5f, 1.5f)]
     public float assistGripMultiplier = 1f;
 
-    [Tooltip("Future CarDrivingAssist will scale steering through this multiplier.")]
+    [Tooltip("Scaled by CarKeyboardDrivingAssist when keyboard assist is enabled.")]
     [Range(0.5f, 1.5f)]
     public float assistSteerMultiplier = 1f;
-
-    [Header("Input")]
-    public CarPlayerInput playerInput;
-    public bool useExternalInput;
 
     public float Speed { get; private set; }
     public float ForwardSpeed { get; private set; }
@@ -44,6 +40,9 @@ public class KenneyCarController : MonoBehaviour
     public float MaxSidewaysSlip { get; private set; }
     public float SkidIntensity { get; private set; }
     public float Throttle { get; private set; }
+
+    /// <summary>When true, driving input is ignored (e.g. dev tuning modal open).</summary>
+    public bool DevInputBlocked { get; set; }
 
     public float maxSpeed => physics.maxSpeed;
 
@@ -114,8 +113,10 @@ public class KenneyCarController : MonoBehaviour
 
         if (moveInput > 0.01f)
         {
-            float powerScale = 1f - speedRatio * speedRatio;
-            motor = moveInput * physics.motorPower * powerScale;
+            float powerScale = 1f - speedRatio * speedRatio * 0.78f;
+            powerScale = Mathf.Max(powerScale, 0.28f);
+            float turnLoad = Mathf.Abs(steerInput) * speedRatio * 0.12f;
+            motor = moveInput * physics.motorPower * powerScale * (1f - turnLoad);
         }
         else if (moveInput < -0.01f)
         {
@@ -162,6 +163,7 @@ public class KenneyCarController : MonoBehaviour
 
         ApplyGrip();
         ApplyBodyForces(speedRatio);
+        ApplyRollStability();
         UpdateSkidState(speedRatio);
 
         UpdateWheelVisual(frontLeftCollider, frontLeftMesh, 0);
@@ -228,7 +230,49 @@ public class KenneyCarController : MonoBehaviour
         rb.centerOfMass = physics.centerOfMass;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-        rb.angularDamping = 0.5f;
+        rb.angularDamping = 0.65f;
+        rb.maxAngularVelocity = 8f;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        StabilizeBarrierHit(collision);
+    }
+
+    private void StabilizeBarrierHit(Collision collision)
+    {
+        if (rb == null || collision == null || collision.contactCount == 0)
+            return;
+
+        Vector3 normal = Vector3.zero;
+        for (int i = 0; i < collision.contactCount; i++)
+            normal += collision.GetContact(i).normal;
+        normal /= collision.contactCount;
+
+        if (normal.y > 0.55f)
+            return;
+
+        Vector3 angular = rb.angularVelocity;
+        angular -= transform.right * Vector3.Dot(angular, transform.right) * 0.9f;
+        angular -= transform.forward * Vector3.Dot(angular, transform.forward) * 0.75f;
+        rb.angularVelocity = angular;
+
+        Vector3 velocity = rb.linearVelocity;
+        if (velocity.y > 0.75f)
+            velocity.y *= 0.35f;
+        rb.linearVelocity = velocity;
+    }
+
+    private void ApplyRollStability()
+    {
+        if (!AnyWheelGrounded())
+            return;
+
+        Vector3 angular = rb.angularVelocity;
+        float rollRate = Vector3.Dot(angular, transform.right);
+        float pitchRate = Vector3.Dot(angular, transform.forward);
+        rb.AddTorque(transform.right * (-rollRate * physics.rollStability));
+        rb.AddTorque(transform.forward * (-pitchRate * physics.pitchStability));
     }
 
     private void UpdateDriftAngle(Vector3 velocity)
@@ -273,8 +317,8 @@ public class KenneyCarController : MonoBehaviour
         }
         else if (Speed > 4f)
         {
-            float align = -DriftAngle * physics.driftAlignStrength * (0.35f + speedRatio * 0.65f);
-            float damp = -yawRate * 900f * speedRatio;
+            float align = -DriftAngle * physics.driftAlignStrength * (0.4f + speedRatio * 0.6f);
+            float damp = -yawRate * 1050f * speedRatio;
             rb.AddTorque(transform.up * (align + damp));
         }
     }
@@ -308,24 +352,13 @@ public class KenneyCarController : MonoBehaviour
 
     private void ReadInput()
     {
-        if (useExternalInput && playerInput != null)
-        {
-            playerInput.Read(out moveInput, out steerInputRaw, out handbrake, out analogSteerInput);
-            moveInput = Mathf.Clamp(moveInput, -1f, 1f);
-            steerInputRaw = Mathf.Clamp(steerInputRaw, -1f, 1f);
-            Throttle = moveInput;
-            return;
-        }
-
-        ReadDefaultInput();
-    }
-
-    private void ReadDefaultInput()
-    {
         moveInput = 0f;
         steerInputRaw = 0f;
         handbrake = false;
         analogSteerInput = false;
+
+        if (DevInputBlocked)
+            return;
 
         Keyboard keyboard = Keyboard.current;
         if (keyboard != null)
