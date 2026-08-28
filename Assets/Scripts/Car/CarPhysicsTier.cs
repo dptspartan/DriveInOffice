@@ -46,6 +46,7 @@ public class CarPhysicsTier : MonoBehaviour
     {
         if (source.motorPower > 0f) target.motorPower = source.motorPower;
         if (source.maxSpeed > 0f) target.maxSpeed = source.maxSpeed;
+        target.driveType = source.driveType;
         if (source.brakeForce > 0f) target.brakeForce = source.brakeForce;
         if (source.handbrakeForce > 0f) target.handbrakeForce = source.handbrakeForce;
         if (source.coastBrake > 0f) target.coastBrake = source.coastBrake;
@@ -53,11 +54,14 @@ public class CarPhysicsTier : MonoBehaviour
         if (source.minSteerAngle > 0f) target.minSteerAngle = source.minSteerAngle;
         if (source.steerRampIn > 0f) target.steerRampIn = source.steerRampIn;
         if (source.steerRampOut > 0f) target.steerRampOut = source.steerRampOut;
+        if (source.steerCounterRamp > 0f) target.steerCounterRamp = source.steerCounterRamp;
+        if (source.counterSteerYaw > 0f) target.counterSteerYaw = source.counterSteerYaw;
         if (source.steerHighSpeedRate > 0f) target.steerHighSpeedRate = source.steerHighSpeedRate;
         if (source.steerSpeedFalloff > 0f) target.steerSpeedFalloff = source.steerSpeedFalloff;
         if (source.keyboardSteerScale > 0f) target.keyboardSteerScale = source.keyboardSteerScale;
         if (source.frontGrip > 0f) target.frontGrip = source.frontGrip;
         if (source.rearGrip > 0f) target.rearGrip = source.rearGrip;
+        if (source.forwardGrip > 0f) target.forwardGrip = source.forwardGrip;
         if (source.handbrakeRearGrip > 0f) target.handbrakeRearGrip = source.handbrakeRearGrip;
         if (source.mass > 0f) target.mass = source.mass;
         if (source.downforce > 0f) target.downforce = source.downforce;

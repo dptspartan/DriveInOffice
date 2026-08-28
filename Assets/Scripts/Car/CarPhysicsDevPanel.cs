@@ -66,6 +66,9 @@ public class CarPhysicsDevPanel : MonoBehaviour
     private Button handlingTabButton;
     private Button bodyTabButton;
     private Toggle assistToggle;
+    private Button rwdButton;
+    private Button fwdButton;
+    private Button awdButton;
     private Text statusText;
 
     private readonly List<FloatField> fields = new List<FloatField>();
@@ -92,6 +95,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         LoadSelectedPreset();
         RefreshPresetDropdown();
         RefreshAssistToggle();
+        RefreshDriveTypeButtons();
         RefreshAllFields();
         SetPanelOpen(showOnStart);
     }
@@ -144,12 +148,15 @@ public class CarPhysicsDevPanel : MonoBehaviour
         fields.Add(new FloatField("Max Steer Angle", Tab.Handling, 5f, 40f, () => working.maxSteerAngle, v => working.maxSteerAngle = v, 1));
         fields.Add(new FloatField("Min Steer Angle", Tab.Handling, 3f, 25f, () => working.minSteerAngle, v => working.minSteerAngle = v, 1));
         fields.Add(new FloatField("Steer Ramp In", Tab.Handling, 0.5f, 8f, () => working.steerRampIn, v => working.steerRampIn = v));
-        fields.Add(new FloatField("Steer Ramp Out", Tab.Handling, 0.5f, 8f, () => working.steerRampOut, v => working.steerRampOut = v));
+        fields.Add(new FloatField("Steer Ramp Out", Tab.Handling, 0.5f, 12f, () => working.steerRampOut, v => working.steerRampOut = v));
+        fields.Add(new FloatField("Steer Counter Ramp", Tab.Handling, 2f, 16f, () => working.steerCounterRamp, v => working.steerCounterRamp = v));
+        fields.Add(new FloatField("Counter-Steer Yaw", Tab.Handling, 0f, 600f, () => working.counterSteerYaw, v => working.counterSteerYaw = v, 0));
         fields.Add(new FloatField("High-Speed Steer Rate", Tab.Handling, 0.2f, 1f, () => working.steerHighSpeedRate, v => working.steerHighSpeedRate = v));
         fields.Add(new FloatField("Steer Speed Falloff", Tab.Handling, 0.8f, 2.5f, () => working.steerSpeedFalloff, v => working.steerSpeedFalloff = v));
         fields.Add(new FloatField("Keyboard Steer Scale", Tab.Handling, 0.5f, 1f, () => working.keyboardSteerScale, v => working.keyboardSteerScale = v));
         fields.Add(new FloatField("Front Grip", Tab.Handling, 0.5f, 1.5f, () => working.frontGrip, v => working.frontGrip = v));
         fields.Add(new FloatField("Rear Grip", Tab.Handling, 0.5f, 1.5f, () => working.rearGrip, v => working.rearGrip = v));
+        fields.Add(new FloatField("Forward Grip (Launch)", Tab.Handling, 0.8f, 2.5f, () => working.forwardGrip, v => working.forwardGrip = v));
         fields.Add(new FloatField("Handbrake Rear Grip", Tab.Handling, 0.15f, 1f, () => working.handbrakeRearGrip, v => working.handbrakeRearGrip = v));
         fields.Add(new FloatField("Downforce", Tab.Handling, 0f, 50f, () => working.downforce, v => working.downforce = v, 0));
         fields.Add(new FloatField("Handbrake Yaw", Tab.Handling, 50f, 800f, () => working.handbrakeYaw, v => working.handbrakeYaw = v, 0));
@@ -231,6 +238,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
             if (targetCar != null)
                 working = targetCar.physics.Clone();
             RefreshAssistToggle();
+            RefreshDriveTypeButtons();
             RefreshAllFields();
             SetStatus("Live edit — Save Preset writes .txt + local storage");
         }
@@ -248,6 +256,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         selectedTier = (CarTier)index;
         LoadSelectedPreset();
         RefreshAssistToggle();
+        RefreshDriveTypeButtons();
         RefreshAllFields();
         SetStatus("Loaded " + selectedTier);
     }
@@ -256,6 +265,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
     {
         working = CarPhysicsSettings.GetPreset(selectedTier).Clone();
         ApplyWorking();
+        RefreshDriveTypeButtons();
         RefreshAllFields();
         SetStatus("Reset to builtin " + selectedTier);
     }
@@ -434,6 +444,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         presetDropdown = CreatePresetDropdown(panelRoot.transform);
         presetDropdown.onValueChanged.AddListener(OnPresetChanged);
         CreateAssistRow(panelRoot.transform);
+        CreateDriveTypeRow(panelRoot.transform);
         CreateTabBar(panelRoot.transform);
         scrollRect = CreateScroll(panelRoot.transform, out driveContent, out handlingContent, out bodyContent);
         CreateFieldRows();
@@ -492,6 +503,62 @@ public class CarPhysicsDevPanel : MonoBehaviour
         toggle.graphic = check;
         assistToggle = toggle;
         assistToggle.onValueChanged.AddListener(OnAssistToggleChanged);
+    }
+
+    private void CreateDriveTypeRow(Transform parent)
+    {
+        GameObject row = Create("DriveTypeRow", parent);
+        row.AddComponent<LayoutElement>().preferredHeight = 32f;
+        HorizontalLayoutGroup h = row.AddComponent<HorizontalLayoutGroup>();
+        h.spacing = 8f;
+        h.childAlignment = TextAnchor.MiddleLeft;
+        h.childControlWidth = true;
+        h.childControlHeight = true;
+        h.childForceExpandWidth = true;
+
+        Text label = AddText(row.transform, "Drive", 14, FontStyle.Normal);
+        label.alignment = TextAnchor.MiddleLeft;
+        LayoutElement ll = label.gameObject.AddComponent<LayoutElement>();
+        ll.preferredWidth = 56f;
+        ll.flexibleWidth = 0f;
+
+        rwdButton = MakeDriveTypeButton(row.transform, "RWD", CarDriveType.RWD);
+        fwdButton = MakeDriveTypeButton(row.transform, "FWD", CarDriveType.FWD);
+        awdButton = MakeDriveTypeButton(row.transform, "AWD", CarDriveType.AWD);
+        RefreshDriveTypeButtons();
+    }
+
+    private Button MakeDriveTypeButton(Transform parent, string label, CarDriveType type)
+    {
+        GameObject go = Create(label, parent);
+        Image bg = go.AddComponent<Image>();
+        bg.color = new Color(0.18f, 0.18f, 0.2f);
+        Button b = go.AddComponent<Button>();
+        b.targetGraphic = bg;
+        b.onClick.AddListener(() => SetDriveType(type));
+        Text t = AddText(go.transform, label, 13, FontStyle.Bold);
+        t.alignment = TextAnchor.MiddleCenter;
+        Stretch(t.rectTransform);
+        return b;
+    }
+
+    private void SetDriveType(CarDriveType type)
+    {
+        if (working == null)
+            return;
+        working.driveType = type;
+        ApplyWorking();
+        RefreshDriveTypeButtons();
+        SetStatus("Drive: " + type);
+    }
+
+    private void RefreshDriveTypeButtons()
+    {
+        if (working == null)
+            return;
+        StyleTab(rwdButton, working.driveType == CarDriveType.RWD);
+        StyleTab(fwdButton, working.driveType == CarDriveType.FWD);
+        StyleTab(awdButton, working.driveType == CarDriveType.AWD);
     }
 
     private Dropdown CreatePresetDropdown(Transform parent)

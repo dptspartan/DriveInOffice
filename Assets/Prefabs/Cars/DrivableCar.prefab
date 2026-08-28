@@ -1082,7 +1082,8 @@ MonoBehaviour:
     motorPower: 1650
     maxSpeed: 18
     reversePower: 0.45
-    brakeForce: 2600
+    driveType: 0
+    brakeForce: 2400
     handbrakeForce: 3400
     coastBrake: 900
     maxSteerAngle: 18
@@ -1092,17 +1093,18 @@ MonoBehaviour:
     steerHighSpeedRate: 0.52
     steerSpeedFalloff: 1.25
     keyboardSteerScale: 0.88
-    frontGrip: 1
-    rearGrip: 0.95
+    frontGrip: 1.08
+    rearGrip: 1.05
+    forwardGrip: 1.12
     handbrakeRearGrip: 0.4
     mass: 1200
-    centerOfMass: {x: 0, y: 0.11, z: 0.05}
-    downforce: 16
-    rollStability: 2400
-    pitchStability: 1900
-    handbrakeYaw: 260
-    driftAlignStrength: 18
-    maxYawRate: 2.2
+    centerOfMass: {x: 0, y: 0.1, z: 0.05}
+    downforce: 18
+    rollStability: 2800
+    pitchStability: 2200
+    handbrakeYaw: 240
+    driftAlignStrength: 12
+    maxYawRate: 2
     driftAngleThreshold: 10
     skidSlipReference: 0.55
     impactStopSeconds: 1.2

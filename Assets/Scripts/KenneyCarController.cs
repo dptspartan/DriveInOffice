@@ -51,8 +51,10 @@ public class KenneyCarController : MonoBehaviour
     private float moveInput;
     private float steerInputRaw;
     private float steerInput;
+    private float steerTarget;
     private bool handbrake;
     private bool analogSteerInput;
+    private bool isCounterSteering;
     private readonly float[] wheelSpin = new float[4];
 
     public void ApplySettings(CarPhysicsSettings settings)
@@ -116,14 +118,23 @@ public class KenneyCarController : MonoBehaviour
             float powerScale = 1f - speedRatio * speedRatio * 0.78f;
             powerScale = Mathf.Max(powerScale, 0.28f);
             float turnLoad = Mathf.Abs(steerInput) * speedRatio * 0.12f;
-            motor = moveInput * physics.motorPower * powerScale * (1f - turnLoad);
+            // Soft launch ramp so torque doesn't overwhelm grip from a standstill.
+            float launch = Mathf.Lerp(0.55f, 1f, Mathf.Clamp01(Mathf.Abs(ForwardSpeed) / 4.5f));
+            motor = moveInput * physics.motorPower * powerScale * (1f - turnLoad) * launch;
+            motor *= TractionScale();
         }
         else if (moveInput < -0.01f)
         {
             if (ForwardSpeed > 1f)
+            {
                 footBrake = -moveInput * physics.brakeForce;
+            }
             else
-                motor = moveInput * physics.motorPower * physics.reversePower;
+            {
+                float launch = Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(Mathf.Abs(ForwardSpeed) / 3.5f));
+                motor = moveInput * physics.motorPower * physics.reversePower * launch;
+                motor *= TractionScale();
+            }
         }
         else if (Mathf.Abs(ForwardSpeed) > 0.5f)
         {
@@ -132,8 +143,9 @@ public class KenneyCarController : MonoBehaviour
 
         IsFootBraking = footBrake > 0.01f;
 
-        float frontBrake = Mathf.Max(footBrake, coastBrake);
-        float rearBrake = Mathf.Max(footBrake, coastBrake);
+        // Front-biased service brakes (arcade ABS-friendly). Equal lock was causing rear slip.
+        float frontBrake = Mathf.Max(footBrake * 0.68f, coastBrake);
+        float rearBrake = Mathf.Max(footBrake * 0.38f, coastBrake * 0.85f);
         if (handbrake)
             rearBrake = Mathf.Max(rearBrake, physics.handbrakeForce);
 
@@ -144,25 +156,37 @@ public class KenneyCarController : MonoBehaviour
             rearBrake = physics.impactBrakeForce;
         }
 
-        rearLeftCollider.motorTorque = motor;
-        rearRightCollider.motorTorque = motor;
-        frontLeftCollider.motorTorque = 0f;
-        frontRightCollider.motorTorque = 0f;
+        ApplyDriveTorque(motor);
 
-        frontLeftCollider.brakeTorque = frontBrake;
-        frontRightCollider.brakeTorque = frontBrake;
-        rearLeftCollider.brakeTorque = rearBrake;
-        rearRightCollider.brakeTorque = rearBrake;
+        frontLeftCollider.brakeTorque = SoftAbsBrake(frontLeftCollider, frontBrake);
+        frontRightCollider.brakeTorque = SoftAbsBrake(frontRightCollider, frontBrake);
+        // Handbrake should lock rears for slides; ABS only on service braking.
+        if (handbrake && !IsStunned)
+        {
+            rearLeftCollider.brakeTorque = rearBrake;
+            rearRightCollider.brakeTorque = rearBrake;
+        }
+        else
+        {
+            rearLeftCollider.brakeTorque = SoftAbsBrake(rearLeftCollider, rearBrake);
+            rearRightCollider.brakeTorque = SoftAbsBrake(rearRightCollider, rearBrake);
+        }
+
+        ApplyStandstillHold();
 
         float steerAngle = steerInput
             * GetSteerAngleLimit(speedRatio)
             * assistSteerMultiplier;
+        // Softer steering in reverse keeps RWD from snapping left/right.
+        if (ForwardSpeed < -0.25f)
+            steerAngle *= 0.72f;
 
         frontLeftCollider.steerAngle = steerAngle;
         frontRightCollider.steerAngle = steerAngle;
 
         ApplyGrip();
-        ApplyBodyForces(speedRatio);
+        ApplyBodyForces(speedRatio, ForwardSpeed < -0.35f);
+        ApplyCounterSteerAssist(speedRatio);
         ApplyRollStability();
         UpdateSkidState(speedRatio);
 
@@ -170,6 +194,79 @@ public class KenneyCarController : MonoBehaviour
         UpdateWheelVisual(frontRightCollider, frontRightMesh, 1);
         UpdateWheelVisual(rearLeftCollider, rearLeftMesh, 2);
         UpdateWheelVisual(rearRightCollider, rearRightMesh, 3);
+    }
+
+    /// <summary>
+    /// Holds the car still when idle and nearly stopped.
+    /// Fixes slope/gravity creep without affecting launch, reverse, or rolling stops.
+    /// </summary>
+    private void ApplyStandstillHold()
+    {
+        // Any throttle/brake intent or airborne → leave normal physics alone.
+        if (Mathf.Abs(moveInput) > 0.01f || IsStunned || !AnyWheelGrounded())
+            return;
+
+        Vector3 velocity = rb.linearVelocity;
+        Vector3 flat = new Vector3(velocity.x, 0f, velocity.z);
+        float flatSpeed = flat.magnitude;
+
+        // Still rolling to a stop — don't clamp yet (lets coast/brake finish naturally).
+        if (flatSpeed > 0.55f)
+            return;
+
+        // Light parking brake so wheels don't freewheel under gravity.
+        float holdBrake = Mathf.Max(1400f, physics.brakeForce * 0.4f);
+        frontLeftCollider.brakeTorque = Mathf.Max(frontLeftCollider.brakeTorque, holdBrake);
+        frontRightCollider.brakeTorque = Mathf.Max(frontRightCollider.brakeTorque, holdBrake);
+        rearLeftCollider.brakeTorque = Mathf.Max(rearLeftCollider.brakeTorque, holdBrake);
+        rearRightCollider.brakeTorque = Mathf.Max(rearRightCollider.brakeTorque, holdBrake);
+
+        // Bleed residual horizontal/yaw creep. Keep vertical velocity so jumps/settling stay intact.
+        float bleed = 3.5f * Time.fixedDeltaTime;
+        velocity.x = Mathf.MoveTowards(velocity.x, 0f, bleed);
+        velocity.z = Mathf.MoveTowards(velocity.z, 0f, bleed);
+        rb.linearVelocity = velocity;
+
+        Vector3 angular = rb.angularVelocity;
+        angular.x = Mathf.MoveTowards(angular.x, 0f, bleed);
+        angular.y = Mathf.MoveTowards(angular.y, 0f, bleed * 1.5f);
+        angular.z = Mathf.MoveTowards(angular.z, 0f, bleed);
+        rb.angularVelocity = angular;
+
+        // Fully settle once basically stopped.
+        if (flatSpeed < 0.08f && angular.sqrMagnitude < 0.01f)
+        {
+            rb.linearVelocity = new Vector3(0f, velocity.y, 0f);
+            angular.x = 0f;
+            angular.y = 0f;
+            angular.z = 0f;
+            rb.angularVelocity = angular;
+        }
+    }
+
+    private void ApplyDriveTorque(float motor)
+    {
+        float frontMotor = 0f;
+        float rearMotor = 0f;
+
+        switch (physics.driveType)
+        {
+            case CarDriveType.FWD:
+                frontMotor = motor;
+                break;
+            case CarDriveType.AWD:
+                frontMotor = motor * 0.5f;
+                rearMotor = motor * 0.5f;
+                break;
+            default:
+                rearMotor = motor;
+                break;
+        }
+
+        if (frontLeftCollider != null) frontLeftCollider.motorTorque = frontMotor;
+        if (frontRightCollider != null) frontRightCollider.motorTorque = frontMotor;
+        if (rearLeftCollider != null) rearLeftCollider.motorTorque = rearMotor;
+        if (rearRightCollider != null) rearRightCollider.motorTorque = rearMotor;
     }
 
     private float GetSteerAngleLimit(float speedRatio)
@@ -184,13 +281,58 @@ public class KenneyCarController : MonoBehaviour
         if (!analogSteerInput)
             targetSteer *= physics.keyboardSteerScale;
 
-        bool releasing = Mathf.Abs(targetSteer) < 0.01f
-            || Mathf.Sign(targetSteer) != Mathf.Sign(steerInput);
-        float ramp = releasing ? physics.steerRampOut : physics.steerRampIn;
-        float rateScale = Mathf.Lerp(1f, physics.steerHighSpeedRate, speedRatio);
-        float step = ramp * rateScale * Time.fixedDeltaTime;
+        steerTarget = targetSteer;
 
+        bool releasing = Mathf.Abs(targetSteer) < 0.02f;
+        bool countering = !releasing
+            && Mathf.Abs(steerInput) > 0.04f
+            && Mathf.Sign(targetSteer) != Mathf.Sign(steerInput);
+
+        isCounterSteering = countering;
+
+        float ramp;
+        float rateScale;
+        if (countering)
+        {
+            // Flip A↔D: rip through center much faster than normal ramp-in.
+            ramp = physics.steerCounterRamp;
+            // Keep counter-steer responsive even at speed.
+            rateScale = Mathf.Lerp(1f, Mathf.Max(0.72f, physics.steerHighSpeedRate), speedRatio);
+        }
+        else if (releasing)
+        {
+            ramp = physics.steerRampOut;
+            rateScale = Mathf.Lerp(1f, Mathf.Max(0.65f, physics.steerHighSpeedRate), speedRatio);
+        }
+        else
+        {
+            ramp = physics.steerRampIn;
+            rateScale = Mathf.Lerp(1f, physics.steerHighSpeedRate, speedRatio);
+        }
+
+        float step = ramp * rateScale * Time.fixedDeltaTime;
         steerInput = Mathf.MoveTowards(steerInput, targetSteer, step);
+    }
+
+    /// <summary>
+    /// Extra body yaw when the player flips steer (A→D). Wheels alone feel sluggish;
+    /// a short torque makes the car rotate into the new direction.
+    /// </summary>
+    private void ApplyCounterSteerAssist(float speedRatio)
+    {
+        if (!isCounterSteering || rb == null || !AnyWheelGrounded())
+            return;
+        if (Speed < 1.5f || ForwardSpeed < -0.35f || handbrake)
+            return;
+
+        float flip = Mathf.Abs(steerTarget - steerInput);
+        float strength = physics.counterSteerYaw
+            * Mathf.Sign(steerTarget)
+            * Mathf.Clamp01(Mathf.Abs(steerTarget))
+            * Mathf.Lerp(0.55f, 1.1f, speedRatio)
+            * Mathf.Lerp(0.35f, 1f, Mathf.Clamp01(flip));
+
+        rb.AddTorque(transform.up * strength);
     }
 
     public void StunFromImpact(float duration = -1f, float velocityRetention = 0.35f, float brakeScale = 1f)
@@ -230,8 +372,8 @@ public class KenneyCarController : MonoBehaviour
         rb.centerOfMass = physics.centerOfMass;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-        rb.angularDamping = 0.65f;
-        rb.maxAngularVelocity = 8f;
+        rb.angularDamping = 0.85f;
+        rb.maxAngularVelocity = 7f;
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -293,13 +435,95 @@ public class KenneyCarController : MonoBehaviour
         float front = gripScale * physics.frontGrip;
         float rear = gripScale * (handbrake ? physics.handbrakeRearGrip : physics.rearGrip);
 
+        // Foot brake: keep sideways bite so the car slows in line instead of swapping ends.
+        if (IsFootBraking && !handbrake)
+        {
+            front *= 1.08f;
+            rear *= 1.12f;
+        }
+
+        // Match revamp baseline stiffness (~1.6), scaled gently by forwardGrip.
+        float forward = 1.6f * physics.forwardGrip;
+
         SetSidewaysStiffness(frontLeftCollider, front);
         SetSidewaysStiffness(frontRightCollider, front);
         SetSidewaysStiffness(rearLeftCollider, rear);
         SetSidewaysStiffness(rearRightCollider, rear);
+
+        SetForwardStiffness(frontLeftCollider, forward);
+        SetForwardStiffness(frontRightCollider, forward);
+        SetForwardStiffness(rearLeftCollider, forward);
+        SetForwardStiffness(rearRightCollider, forward);
     }
 
-    private void ApplyBodyForces(float speedRatio)
+    /// <summary>
+    /// Soft ABS: ease brake torque when a wheel is locking (high forward slip).
+    /// </summary>
+    private static float SoftAbsBrake(WheelCollider collider, float desiredBrake)
+    {
+        if (collider == null || desiredBrake < 1f)
+            return desiredBrake;
+
+        if (!collider.GetGroundHit(out WheelHit hit))
+            return desiredBrake;
+
+        float slip = Mathf.Abs(hit.forwardSlip);
+        if (slip < 0.32f)
+            return desiredBrake;
+
+        float unlock = Mathf.InverseLerp(0.95f, 0.32f, slip);
+        return desiredBrake * Mathf.Lerp(0.28f, 1f, unlock);
+    }
+
+    /// <summary>
+    /// Cuts motor when drive wheels are spinning faster than the car is moving.
+    /// </summary>
+    private float TractionScale()
+    {
+        float avgRpm = 0f;
+        int count = 0;
+        switch (physics.driveType)
+        {
+            case CarDriveType.FWD:
+                SampleRpm(frontLeftCollider, ref avgRpm, ref count);
+                SampleRpm(frontRightCollider, ref avgRpm, ref count);
+                break;
+            case CarDriveType.AWD:
+                SampleRpm(frontLeftCollider, ref avgRpm, ref count);
+                SampleRpm(frontRightCollider, ref avgRpm, ref count);
+                SampleRpm(rearLeftCollider, ref avgRpm, ref count);
+                SampleRpm(rearRightCollider, ref avgRpm, ref count);
+                break;
+            default:
+                SampleRpm(rearLeftCollider, ref avgRpm, ref count);
+                SampleRpm(rearRightCollider, ref avgRpm, ref count);
+                break;
+        }
+
+        if (count == 0)
+            return 1f;
+
+        avgRpm /= count;
+        WheelCollider refWheel = physics.driveType == CarDriveType.FWD ? frontLeftCollider : rearLeftCollider;
+        float radius = refWheel != null ? Mathf.Max(0.2f, refWheel.radius) : 0.35f;
+        float expectedRpm = Mathf.Abs(ForwardSpeed) * 60f / (2f * Mathf.PI * radius);
+        float overspin = avgRpm - expectedRpm;
+        if (overspin < 90f)
+            return 1f;
+
+        float cut = Mathf.InverseLerp(90f, 420f, overspin);
+        return Mathf.Lerp(1f, 0.45f, cut);
+    }
+
+    private static void SampleRpm(WheelCollider collider, ref float sum, ref int count)
+    {
+        if (collider == null)
+            return;
+        sum += Mathf.Abs(collider.rpm);
+        count++;
+    }
+
+    private void ApplyBodyForces(float speedRatio, bool reversing)
     {
         rb.AddForce(-transform.up * physics.downforce * Speed * Speed);
 
@@ -314,12 +538,57 @@ public class KenneyCarController : MonoBehaviour
             float yawTorque = steerInput * physics.handbrakeYaw * (0.4f + speedRatio);
             rb.AddTorque(transform.up * yawTorque);
             ClampYawRate(yawRate, angular);
+            return;
         }
-        else if (Speed > 4f)
+
+        if (Speed < 2.5f)
+            return;
+
+        // Reverse: damp only. Any align torque fights the rear axle and jerks L/R.
+        if (reversing)
         {
-            float align = -DriftAngle * physics.driftAlignStrength * (0.4f + speedRatio * 0.6f);
-            float damp = -yawRate * 1050f * speedRatio;
-            rb.AddTorque(transform.up * (align + damp));
+            float reverseDamp = -yawRate * 2200f * Mathf.Lerp(0.7f, 1.15f, speedRatio);
+            rb.AddTorque(transform.up * reverseDamp);
+
+            float reverseCap = Mathf.Min(1.15f, physics.maxYawRate * 0.45f);
+            // Allow intentional reverse turns, but kill oscillation.
+            if (Mathf.Abs(steerInput) < 0.08f && Mathf.Abs(yawRate) > reverseCap)
+            {
+                float clamped = Mathf.Clamp(yawRate, -reverseCap, reverseCap);
+                rb.angularVelocity = angular - transform.up * (yawRate - clamped);
+            }
+            else if (Mathf.Abs(yawRate) > physics.maxYawRate * 0.85f)
+            {
+                float clamped = Mathf.Clamp(yawRate, -physics.maxYawRate * 0.85f, physics.maxYawRate * 0.85f);
+                rb.angularVelocity = angular - transform.up * (yawRate - clamped);
+            }
+            return;
+        }
+
+        // Always damp yaw so small tire force noise cannot build into a wobble.
+        float damp = -yawRate * 1550f * Mathf.Lerp(0.55f, 1.05f, speedRatio);
+
+        float align = 0f;
+        if (!IsFootBraking && !isCounterSteering)
+        {
+            // Deadzone: do not hunt toward velocity when nearly straight (was causing forward wobble).
+            float absDrift = Mathf.Abs(DriftAngle);
+            if (absDrift > 5f)
+            {
+                float scale = Mathf.InverseLerp(5f, 28f, absDrift);
+                // Ease off while the player is steering so turns don't get yanked straight.
+                float steerEase = Mathf.Lerp(1f, 0.25f, Mathf.Abs(steerInput));
+                align = -DriftAngle * physics.driftAlignStrength * 0.32f
+                    * (0.25f + speedRatio * 0.55f) * scale * steerEase;
+            }
+        }
+
+        rb.AddTorque(transform.up * (align + damp));
+
+        if (Mathf.Abs(yawRate) > physics.maxYawRate)
+        {
+            float clamped = Mathf.Clamp(yawRate, -physics.maxYawRate, physics.maxYawRate);
+            rb.angularVelocity = angular - transform.up * (yawRate - clamped);
         }
     }
 
@@ -422,11 +691,12 @@ public class KenneyCarController : MonoBehaviour
         if (collider == null)
             return;
 
+        // Stable arcade curves (revamp baseline). Over-stiff forward was locking under brake → slip/wobble.
         WheelFrictionCurve forward = collider.forwardFriction;
         forward.extremumSlip = 0.35f;
-        forward.extremumValue = 1f;
+        forward.extremumValue = 1.05f;
         forward.asymptoteSlip = 0.75f;
-        forward.asymptoteValue = 0.65f;
+        forward.asymptoteValue = 0.7f;
         forward.stiffness = 1.6f;
         collider.forwardFriction = forward;
 
@@ -434,7 +704,7 @@ public class KenneyCarController : MonoBehaviour
         sideways.extremumSlip = 0.22f;
         sideways.extremumValue = 1f;
         sideways.asymptoteSlip = 0.55f;
-        sideways.asymptoteValue = 0.7f;
+        sideways.asymptoteValue = 0.75f;
         sideways.stiffness = BaseSidewaysStiffness;
         collider.sidewaysFriction = sideways;
     }
@@ -455,6 +725,16 @@ public class KenneyCarController : MonoBehaviour
         WheelFrictionCurve curve = collider.sidewaysFriction;
         curve.stiffness = stiffness;
         collider.sidewaysFriction = curve;
+    }
+
+    private static void SetForwardStiffness(WheelCollider collider, float stiffness)
+    {
+        if (collider == null)
+            return;
+
+        WheelFrictionCurve curve = collider.forwardFriction;
+        curve.stiffness = stiffness;
+        collider.forwardFriction = curve;
     }
 
     private void UpdateWheelVisual(WheelCollider collider, Transform meshTransform, int index)

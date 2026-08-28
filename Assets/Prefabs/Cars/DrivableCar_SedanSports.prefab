@@ -116,7 +116,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.rearGrip
-      value: 0.88
+      value: 1.02
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.downforce
@@ -124,11 +124,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.frontGrip
-      value: 0.98
+      value: 1.08
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.brakeForce
-      value: 2500
+      value: 2350
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.coastBrake
@@ -136,7 +136,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.maxYawRate
-      value: 2.6
+      value: 2.1
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.motorPower
@@ -180,7 +180,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.driftAlignStrength
-      value: 14
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 6087735622957296425, guid: e0b854978cf8446569ad5914b32a90d7, type: 3}
       propertyPath: physics.keyboardSteerScale

@@ -9,12 +9,12 @@ using UnityEngine;
 /// </summary>
 public static class CarTuneStore
 {
-    public const string PrefsPrefix = "CarTune_";
-    public const string LastPresetKey = "CarTune_LastPreset";
-    public const string AssistEnabledKey = "CarTune_AssistEnabled";
-    public const string AssistStrengthKey = "CarTune_AssistStrength";
+    public const string PrefsPrefix = "CarTune_v3_";
+    public const string LastPresetKey = "CarTune_v3_LastPreset";
+    public const string AssistEnabledKey = "CarTune_v3_AssistEnabled";
+    public const string AssistStrengthKey = "CarTune_v3_AssistStrength";
 
-    public static string TunesFolder => Path.Combine(Application.persistentDataPath, "CarTunes");
+    public static string TunesFolder => Path.Combine(Application.persistentDataPath, "CarTunes_v3");
 
     public static string FilePath(CarTier tier) => Path.Combine(TunesFolder, tier + ".txt");
 
@@ -101,6 +101,7 @@ public static class CarTuneStore
         W(sb, "motorPower", s.motorPower);
         W(sb, "maxSpeed", s.maxSpeed);
         W(sb, "reversePower", s.reversePower);
+        W(sb, "driveType", (float)(int)s.driveType);
         W(sb, "brakeForce", s.brakeForce);
         W(sb, "handbrakeForce", s.handbrakeForce);
         W(sb, "coastBrake", s.coastBrake);
@@ -108,11 +109,14 @@ public static class CarTuneStore
         W(sb, "minSteerAngle", s.minSteerAngle);
         W(sb, "steerRampIn", s.steerRampIn);
         W(sb, "steerRampOut", s.steerRampOut);
+        W(sb, "steerCounterRamp", s.steerCounterRamp);
+        W(sb, "counterSteerYaw", s.counterSteerYaw);
         W(sb, "steerHighSpeedRate", s.steerHighSpeedRate);
         W(sb, "steerSpeedFalloff", s.steerSpeedFalloff);
         W(sb, "keyboardSteerScale", s.keyboardSteerScale);
         W(sb, "frontGrip", s.frontGrip);
         W(sb, "rearGrip", s.rearGrip);
+        W(sb, "forwardGrip", s.forwardGrip);
         W(sb, "handbrakeRearGrip", s.handbrakeRearGrip);
         W(sb, "mass", s.mass);
         W(sb, "comX", s.centerOfMass.x);
@@ -175,6 +179,7 @@ public static class CarTuneStore
                 case "motorPower": s.motorPower = v; break;
                 case "maxSpeed": s.maxSpeed = v; break;
                 case "reversePower": s.reversePower = v; break;
+                case "driveType": s.driveType = (CarDriveType)Mathf.Clamp(Mathf.RoundToInt(v), 0, 2); break;
                 case "brakeForce": s.brakeForce = v; break;
                 case "handbrakeForce": s.handbrakeForce = v; break;
                 case "coastBrake": s.coastBrake = v; break;
@@ -182,11 +187,14 @@ public static class CarTuneStore
                 case "minSteerAngle": s.minSteerAngle = v; break;
                 case "steerRampIn": s.steerRampIn = v; break;
                 case "steerRampOut": s.steerRampOut = v; break;
+                case "steerCounterRamp": s.steerCounterRamp = v; break;
+                case "counterSteerYaw": s.counterSteerYaw = v; break;
                 case "steerHighSpeedRate": s.steerHighSpeedRate = v; break;
                 case "steerSpeedFalloff": s.steerSpeedFalloff = v; break;
                 case "keyboardSteerScale": s.keyboardSteerScale = v; break;
                 case "frontGrip": s.frontGrip = v; break;
                 case "rearGrip": s.rearGrip = v; break;
+                case "forwardGrip": s.forwardGrip = v; break;
                 case "handbrakeRearGrip": s.handbrakeRearGrip = v; break;
                 case "mass": s.mass = v; break;
                 case "comX": s.centerOfMass = new Vector3(v, s.centerOfMass.y, s.centerOfMass.z); break;

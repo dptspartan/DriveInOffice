@@ -60,15 +60,19 @@ public class CarKeyboardDrivingAssist : MonoBehaviour
         if (rb == null || controller.IsHandbraking || controller.Speed < 3.5f)
             return;
 
+        // DriftAngle is ~±180° while reversing — treating it as a slide yanks the car L/R.
+        if (controller.ForwardSpeed < -0.25f)
+            return;
+
         float drift = controller.DriftAngle;
-        if (Mathf.Abs(drift) < 6f)
+        if (Mathf.Abs(drift) < 8f)
             return;
 
         float speedRatio = controller.physics.maxSpeed > 0.01f
             ? Mathf.Clamp01(controller.Speed / controller.physics.maxSpeed)
             : 0f;
 
-        float torque = -drift * 4f * strength * (0.3f + speedRatio * 0.7f);
+        float torque = -drift * 2.2f * strength * (0.25f + speedRatio * 0.55f);
         rb.AddTorque(transform.up * torque, ForceMode.Acceleration);
     }
 
