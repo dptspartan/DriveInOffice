@@ -7,7 +7,8 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 /// <summary>
-/// Press M: tune all car/camera gameplay settings, save per-preset .txt + PlayerPrefs.
+/// Press M: tune all car/camera/assist gameplay settings.
+/// Save writes per-preset .txt under persistentDataPath/CarTunes + PlayerPrefs.
 /// </summary>
 [DisallowMultipleComponent]
 public class CarPhysicsDevPanel : MonoBehaviour
@@ -38,7 +39,6 @@ public class CarPhysicsDevPanel : MonoBehaviour
 
     private struct FieldWidgets
     {
-        public Tab Tab;
         public Slider Slider;
         public InputField Input;
         public FloatField Field;
@@ -50,8 +50,10 @@ public class CarPhysicsDevPanel : MonoBehaviour
     [SerializeField] bool showOnStart;
     [SerializeField] bool loadSavedOnStart = true;
 
-    private CarTuneConfig working;
-    private CarTunePreset selectedPreset = CarTunePreset.Commuter;
+    private CarPhysicsSettings working;
+    private CarPhysicsTier tierComponent;
+    private CarKeyboardDrivingAssist keyboardAssist;
+    private CarTier selectedTier = CarTier.Commuter;
     private Tab activeTab = Tab.Drive;
 
     private GameObject panelRoot;
@@ -63,6 +65,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
     private Button driveTabButton;
     private Button handlingTabButton;
     private Button bodyTabButton;
+    private Toggle assistToggle;
     private Text statusText;
 
     private readonly List<FloatField> fields = new List<FloatField>();
@@ -75,12 +78,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
 
     private void Awake()
     {
-        if (targetCar == null)
-            targetCar = FindAnyObjectByType<KenneyCarController>();
-        if (targetCamera == null && targetCar != null)
-            targetCamera = targetCar.GetComponentInChildren<CarFollowCamera>(true);
-        if (targetCamera == null)
-            targetCamera = FindAnyObjectByType<CarFollowCamera>();
+        ResolveTargets();
     }
 
     private void Start()
@@ -88,12 +86,12 @@ public class CarPhysicsDevPanel : MonoBehaviour
         BuildFieldDefinitions();
         BuildUi();
 
-        if (loadSavedOnStart && PlayerPrefs.HasKey(CarTuneConfig.LastPresetKey))
-            selectedPreset = (CarTunePreset)PlayerPrefs.GetInt(CarTuneConfig.LastPresetKey, (int)CarTunePreset.Commuter);
+        if (loadSavedOnStart && PlayerPrefs.HasKey(CarTuneStore.LastPresetKey))
+            selectedTier = (CarTier)PlayerPrefs.GetInt(CarTuneStore.LastPresetKey, (int)CarTier.Commuter);
 
-        working = CarTuneConfig.LoadPreset(selectedPreset, CarTuneConfig.GetBuiltin(selectedPreset));
-        working.ApplyTo(targetCar, targetCamera);
+        LoadSelectedPreset();
         RefreshPresetDropdown();
+        RefreshAssistToggle();
         RefreshAllFields();
         SetPanelOpen(showOnStart);
     }
@@ -110,50 +108,109 @@ public class CarPhysicsDevPanel : MonoBehaviour
             targetCar.DevInputBlocked = false;
     }
 
+    private void ResolveTargets()
+    {
+        if (targetCar == null)
+            targetCar = FindAnyObjectByType<KenneyCarController>();
+        if (targetCar == null)
+            return;
+
+        tierComponent = targetCar.GetComponent<CarPhysicsTier>();
+        keyboardAssist = targetCar.GetComponent<CarKeyboardDrivingAssist>();
+        if (keyboardAssist == null)
+            keyboardAssist = targetCar.gameObject.AddComponent<CarKeyboardDrivingAssist>();
+
+        if (targetCamera == null)
+            targetCamera = targetCar.GetComponentInChildren<CarFollowCamera>(true);
+        if (targetCamera == null)
+            targetCamera = FindAnyObjectByType<CarFollowCamera>();
+    }
+
     private void BuildFieldDefinitions()
     {
         fields.Clear();
-        // Drive
-        fields.Add(new FloatField("Motor Power", Tab.Drive, 400f, 3500f, () => working.motorForce, v => working.motorForce = v, 0));
+        fields.Add(new FloatField("Motor Power", Tab.Drive, 400f, 3500f, () => working.motorPower, v => working.motorPower = v, 0));
         fields.Add(new FloatField("Max Speed (m/s)", Tab.Drive, 8f, 35f, () => working.maxSpeed, v => working.maxSpeed = v, 1));
-        fields.Add(new FloatField("Reverse Motor Scale", Tab.Drive, 0.3f, 1.2f, () => working.reverseMotorScale, v => working.reverseMotorScale = v));
-        fields.Add(new FloatField("Foot Brake Force", Tab.Drive, 800f, 6000f, () => working.footBrakeForce, v => working.footBrakeForce = v, 0));
+        fields.Add(new FloatField("Reverse Power", Tab.Drive, 0.2f, 0.8f, () => working.reversePower, v => working.reversePower = v));
+        fields.Add(new FloatField("Brake Force", Tab.Drive, 800f, 6000f, () => working.brakeForce, v => working.brakeForce = v, 0));
         fields.Add(new FloatField("Handbrake Force", Tab.Drive, 1000f, 7000f, () => working.handbrakeForce, v => working.handbrakeForce = v, 0));
-        fields.Add(new FloatField("Coast / Engine Brake", Tab.Drive, 200f, 3000f, () => working.engineBrakeForce, v => working.engineBrakeForce = v, 0));
+        fields.Add(new FloatField("Coast Brake", Tab.Drive, 200f, 3000f, () => working.coastBrake, v => working.coastBrake = v, 0));
         fields.Add(new FloatField("Impact Stop (s)", Tab.Drive, 0.2f, 3f, () => working.impactStopSeconds, v => working.impactStopSeconds = v));
         fields.Add(new FloatField("Impact Brake Force", Tab.Drive, 2000f, 15000f, () => working.impactBrakeForce, v => working.impactBrakeForce = v, 0));
+        fields.Add(new FloatField("Keyboard Assist Strength", Tab.Drive, 0f, 1f,
+            () => keyboardAssist != null ? keyboardAssist.AssistStrength : 0.4f,
+            v => { if (keyboardAssist != null) keyboardAssist.AssistStrength = v; }));
 
-        // Handling
         fields.Add(new FloatField("Max Steer Angle", Tab.Handling, 5f, 40f, () => working.maxSteerAngle, v => working.maxSteerAngle = v, 1));
         fields.Add(new FloatField("Min Steer Angle", Tab.Handling, 3f, 25f, () => working.minSteerAngle, v => working.minSteerAngle = v, 1));
-        fields.Add(new FloatField("Steer Speed", Tab.Handling, 0.5f, 8f, () => working.steerSpeed, v => working.steerSpeed = v));
-        fields.Add(new FloatField("Steer Falloff", Tab.Handling, 0.8f, 2.5f, () => working.steerFalloff, v => working.steerFalloff = v));
-        fields.Add(new FloatField("High-Speed Steer Rate", Tab.Handling, 0.2f, 1f, () => working.highSpeedSteerRate, v => working.highSpeedSteerRate = v));
-        fields.Add(new FloatField("Steer Release Mult", Tab.Handling, 0.8f, 2.5f, () => working.steerReleaseMultiplier, v => working.steerReleaseMultiplier = v));
+        fields.Add(new FloatField("Steer Ramp In", Tab.Handling, 0.5f, 8f, () => working.steerRampIn, v => working.steerRampIn = v));
+        fields.Add(new FloatField("Steer Ramp Out", Tab.Handling, 0.5f, 8f, () => working.steerRampOut, v => working.steerRampOut = v));
+        fields.Add(new FloatField("High-Speed Steer Rate", Tab.Handling, 0.2f, 1f, () => working.steerHighSpeedRate, v => working.steerHighSpeedRate = v));
+        fields.Add(new FloatField("Steer Speed Falloff", Tab.Handling, 0.8f, 2.5f, () => working.steerSpeedFalloff, v => working.steerSpeedFalloff = v));
         fields.Add(new FloatField("Keyboard Steer Scale", Tab.Handling, 0.5f, 1f, () => working.keyboardSteerScale, v => working.keyboardSteerScale = v));
-        fields.Add(new FloatField("Front Sideways Grip", Tab.Handling, 0.5f, 4f, () => working.frontSidewaysStiffness, v => working.frontSidewaysStiffness = v));
-        fields.Add(new FloatField("Rear Sideways Grip", Tab.Handling, 0.5f, 4f, () => working.rearSidewaysStiffness, v => working.rearSidewaysStiffness = v));
-        fields.Add(new FloatField("Handbrake Rear Grip", Tab.Handling, 0.1f, 1.5f, () => working.handbrakeRearStiffness, v => working.handbrakeRearStiffness = v));
-        fields.Add(new FloatField("Forward Grip", Tab.Handling, 0.8f, 4f, () => working.forwardStiffness, v => working.forwardStiffness = v));
+        fields.Add(new FloatField("Front Grip", Tab.Handling, 0.5f, 1.5f, () => working.frontGrip, v => working.frontGrip = v));
+        fields.Add(new FloatField("Rear Grip", Tab.Handling, 0.5f, 1.5f, () => working.rearGrip, v => working.rearGrip = v));
+        fields.Add(new FloatField("Handbrake Rear Grip", Tab.Handling, 0.15f, 1f, () => working.handbrakeRearGrip, v => working.handbrakeRearGrip = v));
         fields.Add(new FloatField("Downforce", Tab.Handling, 0f, 50f, () => working.downforce, v => working.downforce = v, 0));
-        fields.Add(new FloatField("Stability Yaw", Tab.Handling, 200f, 5000f, () => working.stabilityYaw, v => working.stabilityYaw = v, 0));
         fields.Add(new FloatField("Handbrake Yaw", Tab.Handling, 50f, 800f, () => working.handbrakeYaw, v => working.handbrakeYaw = v, 0));
-        fields.Add(new FloatField("Max Spin Rate", Tab.Handling, 0.5f, 4f, () => working.maxSpinRate, v => working.maxSpinRate = v));
+        fields.Add(new FloatField("Drift Align Strength", Tab.Handling, 5f, 40f, () => working.driftAlignStrength, v => working.driftAlignStrength = v, 0));
+        fields.Add(new FloatField("Max Yaw Rate", Tab.Handling, 0.5f, 4f, () => working.maxYawRate, v => working.maxYawRate = v));
+        fields.Add(new FloatField("Drift Angle Threshold", Tab.Handling, 3f, 20f, () => working.driftAngleThreshold, v => working.driftAngleThreshold = v, 1));
+        fields.Add(new FloatField("Skid Slip Reference", Tab.Handling, 0.2f, 1f, () => working.skidSlipReference, v => working.skidSlipReference = v));
 
-        // Body + Camera
         fields.Add(new FloatField("Mass", Tab.BodyCam, 600f, 2000f, () => working.mass, v => working.mass = v, 0));
-        fields.Add(new FloatField("COM X", Tab.BodyCam, -0.5f, 0.5f, () => working.comX, v => working.comX = v));
-        fields.Add(new FloatField("COM Y", Tab.BodyCam, 0f, 0.6f, () => working.comY, v => working.comY = v));
-        fields.Add(new FloatField("COM Z", Tab.BodyCam, -0.4f, 0.4f, () => working.comZ, v => working.comZ = v));
-        fields.Add(new FloatField("Angular Damping", Tab.BodyCam, 0f, 2f, () => working.angularDamping, v => working.angularDamping = v));
-        fields.Add(new FloatField("Cam Follow Smooth", Tab.BodyCam, 0.02f, 0.5f, () => working.camFollowSmooth, v => working.camFollowSmooth = v));
-        fields.Add(new FloatField("Cam Rotation Sharpness", Tab.BodyCam, 1f, 20f, () => working.camRotationSharpness, v => working.camRotationSharpness = v, 1));
-        fields.Add(new FloatField("Cam Drift Lateral", Tab.BodyCam, 0f, 2f, () => working.camDriftLateral, v => working.camDriftLateral = v));
-        fields.Add(new FloatField("Cam Speed Pull Back", Tab.BodyCam, 0f, 2f, () => working.camSpeedPullBack, v => working.camSpeedPullBack = v));
-        fields.Add(new FloatField("Cam Look Ahead", Tab.BodyCam, 0f, 0.3f, () => working.camLookAhead, v => working.camLookAhead = v));
-        fields.Add(new FloatField("Cam Look Height", Tab.BodyCam, 0.1f, 2f, () => working.camLookHeight, v => working.camLookHeight = v));
-        fields.Add(new FloatField("Cam Min FOV", Tab.BodyCam, 40f, 70f, () => working.camMinFov, v => working.camMinFov = v, 0));
-        fields.Add(new FloatField("Cam Max FOV", Tab.BodyCam, 45f, 85f, () => working.camMaxFov, v => working.camMaxFov = v, 0));
+        fields.Add(new FloatField("COM X", Tab.BodyCam, -0.5f, 0.5f, () => working.centerOfMass.x, v => working.centerOfMass = new Vector3(v, working.centerOfMass.y, working.centerOfMass.z)));
+        fields.Add(new FloatField("COM Y", Tab.BodyCam, 0f, 0.6f, () => working.centerOfMass.y, v => working.centerOfMass = new Vector3(working.centerOfMass.x, v, working.centerOfMass.z)));
+        fields.Add(new FloatField("COM Z", Tab.BodyCam, -0.4f, 0.4f, () => working.centerOfMass.z, v => working.centerOfMass = new Vector3(working.centerOfMass.x, working.centerOfMass.y, v)));
+        fields.Add(new FloatField("Roll Stability", Tab.BodyCam, 500f, 5000f, () => working.rollStability, v => working.rollStability = v, 0));
+        fields.Add(new FloatField("Pitch Stability", Tab.BodyCam, 500f, 5000f, () => working.pitchStability, v => working.pitchStability = v, 0));
+        fields.Add(new FloatField("Cam Follow Smooth", Tab.BodyCam, 0.02f, 0.5f, () => targetCamera != null ? targetCamera.followSmooth : 0.14f, v => { if (targetCamera != null) targetCamera.followSmooth = v; }));
+        fields.Add(new FloatField("Cam Rotation Sharpness", Tab.BodyCam, 1f, 20f, () => targetCamera != null ? targetCamera.rotationSharpness : 8f, v => { if (targetCamera != null) targetCamera.rotationSharpness = v; }, 1));
+        fields.Add(new FloatField("Cam Drift Lateral", Tab.BodyCam, 0f, 2f, () => targetCamera != null ? targetCamera.driftLateral : 0.55f, v => { if (targetCamera != null) targetCamera.driftLateral = v; }));
+        fields.Add(new FloatField("Cam Speed Pull Back", Tab.BodyCam, 0f, 2f, () => targetCamera != null ? targetCamera.speedPullBack : 0.65f, v => { if (targetCamera != null) targetCamera.speedPullBack = v; }));
+        fields.Add(new FloatField("Cam Look Ahead", Tab.BodyCam, 0f, 0.3f, () => targetCamera != null ? targetCamera.lookAhead : 0.06f, v => { if (targetCamera != null) targetCamera.lookAhead = v; }));
+        fields.Add(new FloatField("Cam Look Height", Tab.BodyCam, 0.1f, 2f, () => targetCamera != null ? targetCamera.lookHeight : 0.55f, v => { if (targetCamera != null) targetCamera.lookHeight = v; }));
+        fields.Add(new FloatField("Cam Min FOV", Tab.BodyCam, 40f, 70f, () => targetCamera != null ? targetCamera.minFov : 55f, v => { if (targetCamera != null) targetCamera.minFov = v; }, 0));
+        fields.Add(new FloatField("Cam Max FOV", Tab.BodyCam, 45f, 85f, () => targetCamera != null ? targetCamera.maxFov : 62f, v => { if (targetCamera != null) targetCamera.maxFov = v; }, 0));
+    }
+
+    private void LoadSelectedPreset()
+    {
+        working = CarTuneStore.Load(selectedTier,
+            out float camFollow, out float camRot, out float camDrift, out float camPull,
+            out float camLookAhead, out float camLookHeight, out float camMinFov, out float camMaxFov,
+            out bool assistOn, out float assistStrength);
+
+        if (targetCar != null)
+            targetCar.ApplySettings(working);
+        if (tierComponent != null)
+            tierComponent.tier = selectedTier;
+
+        if (targetCamera != null)
+        {
+            targetCamera.followSmooth = camFollow;
+            targetCamera.rotationSharpness = camRot;
+            targetCamera.driftLateral = camDrift;
+            targetCamera.speedPullBack = camPull;
+            targetCamera.lookAhead = camLookAhead;
+            targetCamera.lookHeight = camLookHeight;
+            targetCamera.minFov = camMinFov;
+            targetCamera.maxFov = camMaxFov;
+        }
+
+        if (keyboardAssist != null)
+        {
+            keyboardAssist.AssistEnabled = assistOn;
+            keyboardAssist.AssistStrength = assistStrength;
+        }
+    }
+
+    private void ApplyWorking()
+    {
+        if (targetCar != null)
+            targetCar.ApplySettings(working);
+        if (tierComponent != null)
+            tierComponent.tier = selectedTier;
     }
 
     private void SetPanelOpen(bool open)
@@ -171,9 +228,11 @@ public class CarPhysicsDevPanel : MonoBehaviour
             previousCursorVisible = Cursor.visible;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-            working = CarTuneConfig.FromCar(targetCar, targetCamera);
+            if (targetCar != null)
+                working = targetCar.physics.Clone();
+            RefreshAssistToggle();
             RefreshAllFields();
-            SetStatus("Editing live — Save Preset writes .txt + local storage");
+            SetStatus("Live edit — Save Preset writes .txt + local storage");
         }
         else
         {
@@ -182,48 +241,58 @@ public class CarPhysicsDevPanel : MonoBehaviour
         }
     }
 
-    private void ApplyWorking()
-    {
-        working.ApplyTo(targetCar, targetCamera);
-    }
-
     private void OnPresetChanged(int index)
     {
         if (updatingUi)
             return;
-        selectedPreset = (CarTunePreset)index;
-        working = CarTuneConfig.LoadPreset(selectedPreset, CarTuneConfig.GetBuiltin(selectedPreset));
-        working.ApplyTo(targetCar, targetCamera);
+        selectedTier = (CarTier)index;
+        LoadSelectedPreset();
+        RefreshAssistToggle();
         RefreshAllFields();
-        SetStatus("Loaded " + selectedPreset + " (saved file or builtin)");
+        SetStatus("Loaded " + selectedTier);
     }
 
     private void ResetToBuiltin()
     {
-        working = CarTuneConfig.GetBuiltin(selectedPreset).Clone();
-        working.ApplyTo(targetCar, targetCamera);
+        working = CarPhysicsSettings.GetPreset(selectedTier).Clone();
+        ApplyWorking();
         RefreshAllFields();
-        SetStatus("Reset to builtin " + selectedPreset);
+        SetStatus("Reset to builtin " + selectedTier);
     }
 
     private void SaveCurrentPreset()
     {
-        working.SavePreset(selectedPreset);
-        SetStatus("Saved " + selectedPreset + ".txt → " + CarTuneConfig.FilePath(selectedPreset));
-        Debug.Log("[CarTune] Saved " + CarTuneConfig.FilePath(selectedPreset));
+        CarTuneStore.Save(selectedTier, working, targetCamera, keyboardAssist);
+        SetStatus("Saved " + selectedTier + " → " + CarTuneStore.FilePath(selectedTier));
+        Debug.Log("[CarTune] " + CarTuneStore.FilePath(selectedTier));
     }
 
     private void SaveAllPresets()
     {
-        // Keep current values on selected; others keep their stored/builtin then rewrite.
-        working.SavePreset(selectedPreset);
-        foreach (CarTunePreset p in Enum.GetValues(typeof(CarTunePreset)))
+        CarTuneStore.Save(selectedTier, working, targetCamera, keyboardAssist);
+        foreach (CarTier tier in Enum.GetValues(typeof(CarTier)))
         {
-            if (p == selectedPreset)
+            if (tier == selectedTier)
                 continue;
-            CarTuneConfig.LoadPreset(p, CarTuneConfig.GetBuiltin(p)).SavePreset(p);
+            CarPhysicsSettings s = CarTuneStore.Load(tier,
+                out _, out _, out _, out _, out _, out _, out _, out _, out bool aOn, out float aStr);
+            var tempAssist = keyboardAssist;
+            if (tempAssist != null)
+            {
+                bool prevOn = tempAssist.AssistEnabled;
+                float prevStr = tempAssist.AssistStrength;
+                tempAssist.AssistEnabled = aOn;
+                tempAssist.AssistStrength = aStr;
+                CarTuneStore.Save(tier, s, targetCamera, tempAssist);
+                tempAssist.AssistEnabled = prevOn;
+                tempAssist.AssistStrength = prevStr;
+            }
+            else
+            {
+                CarTuneStore.Save(tier, s, targetCamera, null);
+            }
         }
-        SetStatus("Saved all presets under " + CarTuneConfig.TunesFolder);
+        SetStatus("Saved all presets under " + CarTuneStore.TunesFolder);
     }
 
     private void RefreshPresetDropdown()
@@ -231,13 +300,31 @@ public class CarPhysicsDevPanel : MonoBehaviour
         if (presetDropdown == null)
             return;
         updatingUi = true;
-        presetDropdown.value = (int)selectedPreset;
+        presetDropdown.value = (int)selectedTier;
         presetDropdown.RefreshShownValue();
         updatingUi = false;
     }
 
+    private void RefreshAssistToggle()
+    {
+        if (assistToggle == null || keyboardAssist == null)
+            return;
+        updatingUi = true;
+        assistToggle.isOn = keyboardAssist.AssistEnabled;
+        updatingUi = false;
+    }
+
+    private void OnAssistToggleChanged(bool enabled)
+    {
+        if (updatingUi || keyboardAssist == null)
+            return;
+        keyboardAssist.AssistEnabled = enabled;
+    }
+
     private void RefreshAllFields()
     {
+        if (working == null)
+            return;
         updatingUi = true;
         for (int i = 0; i < widgets.Count; i++)
         {
@@ -330,8 +417,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         canvasGo.AddComponent<GraphicRaycaster>();
 
         panelRoot = Create("Panel", canvasGo.transform);
-        Image panelBg = panelRoot.AddComponent<Image>();
-        panelBg.color = new Color(0.08f, 0.09f, 0.11f, 0.94f);
+        panelRoot.AddComponent<Image>().color = new Color(0.08f, 0.09f, 0.11f, 0.94f);
         RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
         panelRect.anchorMin = panelRect.anchorMax = panelRect.pivot = new Vector2(0.5f, 0.5f);
         panelRect.sizeDelta = new Vector2(580f, 700f);
@@ -347,6 +433,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         CreateHeader(panelRoot.transform);
         presetDropdown = CreatePresetDropdown(panelRoot.transform);
         presetDropdown.onValueChanged.AddListener(OnPresetChanged);
+        CreateAssistRow(panelRoot.transform);
         CreateTabBar(panelRoot.transform);
         scrollRect = CreateScroll(panelRoot.transform, out driveContent, out handlingContent, out bodyContent);
         CreateFieldRows();
@@ -373,6 +460,40 @@ public class CarPhysicsDevPanel : MonoBehaviour
         hr.sizeDelta = new Vector2(0f, 16f);
     }
 
+    private void CreateAssistRow(Transform parent)
+    {
+        GameObject row = Create("AssistRow", parent);
+        row.AddComponent<LayoutElement>().preferredHeight = 30f;
+
+        Text label = AddText(row.transform, "Keyboard Assist", 14, FontStyle.Normal);
+        RectTransform lr = label.rectTransform;
+        lr.anchorMin = new Vector2(0f, 0.5f);
+        lr.anchorMax = new Vector2(0f, 0.5f);
+        lr.pivot = new Vector2(0f, 0.5f);
+        lr.anchoredPosition = Vector2.zero;
+        lr.sizeDelta = new Vector2(160f, 28f);
+
+        GameObject toggleGo = Create("AssistToggle", row.transform);
+        RectTransform tr = toggleGo.GetComponent<RectTransform>();
+        tr.anchorMin = tr.anchorMax = tr.pivot = new Vector2(1f, 0.5f);
+        tr.sizeDelta = new Vector2(28f, 28f);
+
+        Toggle toggle = toggleGo.AddComponent<Toggle>();
+        Image bg = Create("Background", toggleGo.transform).AddComponent<Image>();
+        bg.color = new Color(0.16f, 0.17f, 0.2f);
+        Stretch(bg.rectTransform);
+        toggle.targetGraphic = bg;
+
+        Image check = Create("Checkmark", toggleGo.transform).AddComponent<Image>();
+        check.color = new Color(0.35f, 0.75f, 0.45f);
+        RectTransform cr = check.rectTransform;
+        cr.anchorMin = cr.anchorMax = cr.pivot = new Vector2(0.5f, 0.5f);
+        cr.sizeDelta = new Vector2(16f, 16f);
+        toggle.graphic = check;
+        assistToggle = toggle;
+        assistToggle.onValueChanged.AddListener(OnAssistToggleChanged);
+    }
+
     private Dropdown CreatePresetDropdown(Transform parent)
     {
         GameObject row = Create("PresetRow", parent);
@@ -395,8 +516,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         dl.preferredWidth = 170f;
         dl.preferredHeight = 30f;
         dl.flexibleWidth = 0f;
-        Image dbg = ddGo.AddComponent<Image>();
-        dbg.color = new Color(0.18f, 0.22f, 0.28f);
+        ddGo.AddComponent<Image>().color = new Color(0.18f, 0.22f, 0.28f);
         Dropdown dropdown = ddGo.AddComponent<Dropdown>();
 
         Text caption = AddText(ddGo.transform, "Commuter", 13, FontStyle.Normal);
@@ -414,7 +534,6 @@ public class CarPhysicsDevPanel : MonoBehaviour
         ar.anchoredPosition = new Vector2(-4f, 0f);
         ar.sizeDelta = new Vector2(22f, 22f);
 
-        // Template — fixed item height so highlight matches hovered row
         const float itemH = 28f;
         GameObject template = Create("Template", ddGo.transform);
         template.SetActive(false);
@@ -424,8 +543,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         tr.pivot = new Vector2(0.5f, 1f);
         tr.anchoredPosition = new Vector2(0f, 2f);
         tr.sizeDelta = new Vector2(0f, itemH * 4f + 8f);
-        Image tbg = template.AddComponent<Image>();
-        tbg.color = new Color(0.12f, 0.13f, 0.16f);
+        template.AddComponent<Image>().color = new Color(0.12f, 0.13f, 0.16f);
         ScrollRect tscroll = template.AddComponent<ScrollRect>();
         tscroll.horizontal = false;
         tscroll.movementType = ScrollRect.MovementType.Clamped;
@@ -436,8 +554,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         Stretch(vr);
         vr.offsetMin = new Vector2(2f, 2f);
         vr.offsetMax = new Vector2(-2f, -2f);
-        Mask mask = viewport.AddComponent<Mask>();
-        mask.showMaskGraphic = false;
+        viewport.AddComponent<Mask>().showMaskGraphic = false;
         viewport.AddComponent<Image>().color = Color.white;
         tscroll.viewport = vr;
 
@@ -453,8 +570,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         cl.childForceExpandHeight = false;
         cl.childForceExpandWidth = true;
         cl.spacing = 0f;
-        ContentSizeFitter csf = content.AddComponent<ContentSizeFitter>();
-        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         tscroll.content = contentR;
 
         GameObject item = Create("Item", content.transform);
@@ -465,15 +581,12 @@ public class CarPhysicsDevPanel : MonoBehaviour
         Toggle toggle = item.AddComponent<Toggle>();
         toggle.toggleTransition = Toggle.ToggleTransition.None;
 
-        GameObject itemBg = Create("Item Background", item.transform);
-        Image ibg = itemBg.AddComponent<Image>();
+        Image ibg = Create("Item Background", item.transform).AddComponent<Image>();
         ibg.color = new Color(0.18f, 0.19f, 0.22f);
         Stretch(ibg.rectTransform);
         toggle.targetGraphic = ibg;
 
-        // Highlight / check — full row height so it lines up with the mouse row
-        GameObject check = Create("Item Checkmark", item.transform);
-        Image cig = check.AddComponent<Image>();
+        Image cig = Create("Item Checkmark", item.transform).AddComponent<Image>();
         cig.color = new Color(0.28f, 0.48f, 0.78f, 0.85f);
         Stretch(cig.rectTransform);
         toggle.graphic = cig;
@@ -489,8 +602,8 @@ public class CarPhysicsDevPanel : MonoBehaviour
         dropdown.template = tr;
         dropdown.itemText = itemLabel;
         dropdown.options.Clear();
-        foreach (CarTunePreset p in Enum.GetValues(typeof(CarTunePreset)))
-            dropdown.options.Add(new Dropdown.OptionData(p.ToString()));
+        foreach (CarTier tier in Enum.GetValues(typeof(CarTier)))
+            dropdown.options.Add(new Dropdown.OptionData(tier.ToString()));
         return dropdown;
     }
 
@@ -528,12 +641,11 @@ public class CarPhysicsDevPanel : MonoBehaviour
         LayoutElement le = scrollGo.AddComponent<LayoutElement>();
         le.flexibleHeight = 1f;
         le.minHeight = 380f;
-        Image bg = scrollGo.AddComponent<Image>();
-        bg.color = new Color(0.11f, 0.12f, 0.14f, 0.9f);
+        scrollGo.AddComponent<Image>().color = new Color(0.11f, 0.12f, 0.14f, 0.9f);
         ScrollRect scroll = scrollGo.AddComponent<ScrollRect>();
         scroll.horizontal = false;
         scroll.movementType = ScrollRect.MovementType.Clamped;
-        scroll.scrollSensitivity = 8f; // was too fast at ~24
+        scroll.scrollSensitivity = 8f;
         scroll.inertia = true;
         scroll.decelerationRate = 0.2f;
 
@@ -662,7 +774,7 @@ public class CarPhysicsDevPanel : MonoBehaviour
         it.rectTransform.offsetMax = new Vector2(-2f, 0f);
         input.textComponent = it;
 
-        FieldWidgets w = new FieldWidgets { Tab = field.Tab, Slider = slider, Input = input, Field = field };
+        FieldWidgets w = new FieldWidgets { Slider = slider, Input = input, Field = field };
         slider.onValueChanged.AddListener(v => OnSlider(w, v));
         input.onEndEdit.AddListener(t => OnInput(w, t));
         return w;

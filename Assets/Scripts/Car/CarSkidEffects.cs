@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 public class CarSkidEffects : MonoBehaviour
 {
     public KenneyCarController car;
-    public float slipThreshold = 0.55f;
+    public float slipThreshold = 0.3f;
     public float minSpeed = 3.5f;
     public float markWidth = 0.2f;
     public float markLifetime = 28f;
@@ -66,22 +66,16 @@ public class CarSkidEffects : MonoBehaviour
             if (wheels[i] == null)
                 continue;
 
-            bool skidding = false;
             WheelHit hit = default;
             bool grounded = wheels[i].GetGroundHit(out hit);
             float intensity = car != null ? car.SkidIntensity : 0f;
-
-            if (grounded && car != null && car.Speed > minSpeed)
-            {
-                float speedScale = Mathf.InverseLerp(minSpeed, Mathf.Max(car.maxSpeed, minSpeed + 1f), car.Speed);
-                float slip = Mathf.Max(Mathf.Abs(hit.sidewaysSlip), Mathf.Abs(hit.forwardSlip) * 0.45f);
-                float slipLimit = Mathf.Lerp(0.85f, 0.28f, speedScale);
-
-                skidding = car.IsHandbraking
-                    || slip > slipLimit
-                    || (car.IsFootBraking && speedScale > 0.4f && Mathf.Abs(hit.forwardSlip) > 0.25f)
-                    || (car.IsDrifting && intensity > 0.3f);
-            }
+            bool skidding = car != null
+                && car.Speed > minSpeed
+                && grounded
+                && (car.IsHandbraking
+                    || car.IsDrifting
+                    || intensity >= slipThreshold
+                    || (car.IsFootBraking && intensity > slipThreshold * 0.65f));
 
             if (marks[i] != null)
             {

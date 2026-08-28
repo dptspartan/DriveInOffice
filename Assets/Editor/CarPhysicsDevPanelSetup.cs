@@ -11,6 +11,7 @@ public static class CarPhysicsDevPanelSetup
         if (existing != null)
         {
             Selection.activeGameObject = existing.gameObject;
+            EditorGUIUtility.PingObject(existing.gameObject);
             Debug.Log("CarPhysicsDevPanel already in scene: " + existing.name);
             return;
         }
@@ -18,8 +19,8 @@ public static class CarPhysicsDevPanelSetup
         GameObject go = new GameObject("CarPhysicsDevPanel");
         go.AddComponent<CarPhysicsDevPanel>();
         Undo.RegisterCreatedObjectUndo(go, "Add Car Physics Dev Panel");
-        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         Selection.activeGameObject = go;
-        Debug.Log("Added CarPhysicsDevPanel. Press M in Play mode.");
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        Debug.Log("Added CarPhysicsDevPanel. Press Play and M to open the tuner.");
     }
 }
